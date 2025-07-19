@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Syamraj's Launcher</title>
+
+    <!-- Manifest link -->
+    <link rel="manifest" href="manifest.json" />
+
+    <!-- Add an icon -->
+    <link rel="syamraj" href="syamraj_logo.png" type="image/png" />
+
+    <!-- Register Service Worker -->
+    <script>
+        if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('service-worker.js')
+            .then(() => console.log('Service Worker Registered'));
+        }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* CSS Reset and Basic Setup */
+        :root {
+            --background-color: #121212;
+            --surface-color: #1e1e1e;
+            --primary-text-color: #e0e0e0;
+            --secondary-text-color: #a0a0a0;
+            --accent-color: #bb86fc;
+            --icon-background: #2a2a2a;
+            --folder-background: #3a3a3a;
+            --modal-background: #2c2c2c;
+            --shadow-color: rgba(0, 0, 0, 0.5);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--background-color);
+            color: var(--primary-text-color);
+            overflow: hidden; /* Prevent scrolling of the whole page */
+            -webkit-tap-highlight-color: transparent; /* Remove tap highlight on mobile */
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            padding: 20px 10px;
+        }
+        
+        #main-title {
+            text-align: center;
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 10px;
+            flex-shrink: 0;
+        }
+
+        /* Main Grid for Apps and Folders */
+        #app-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+            gap: 20px;
+            padding: 20px;
+            flex-grow: 1;
+            overflow-y: auto; /* Allow scrolling only within the grid */
+            -webkit-overflow-scrolling: touch;
+        }
+
+        /* Individual App/Folder Item Styling */
+        .app-item, .folder-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            text-decoration: none;
+            color: var(--primary-text-color);
+            position: relative;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        
+        .app-item:active, .folder-item:active {
+            transform: scale(0.95);
+        }
+
+        .app-icon, .folder-icon {
+            width: 64px;
+            height: 64px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 8px;
+            box-shadow: 0 4px 8px var(--shadow-color);
+            overflow: hidden;
+            background-color: var(--icon-background);
+        }
+
+        .app-icon img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* Folder Specific Styling */
+        .folder-icon {
+            background-color: var(--folder-background);
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            grid-template-rows: repeat(2, 1fr);
+            padding: 4px;
+            gap: 2px;
+        }
+
+        .folder-icon .mini-icon {
+            width: 100%;
+            height: 100%;
+            border-radius: 4px;
+            object-fit: cover;
+            background-color: var(--icon-background);
+        }
+
+        .app-name {
+            font-size: 12px;
+            word-break: break-word;
+            display: -webkit-box;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            padding: 0 2px;
+        }
+        
+        /* Dragging styles */
+        .dragging {
+            opacity: 0.5;
+        }
+        .drag-over {
+            border: 2px dashed var(--accent-color);
+            transform: scale(1.05);
+        }
+
+        /* Controls and Modals */
+        #controls {
+            position: fixed;
+            width: 100%;
+            bottom: 0;
+            gap: 15px;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            padding: 15px 0;
+            flex-shrink: 0;
+        }
+
+        .control-button {
+            background-color: var(--surface-color);
+            color: var(--primary-text-color);
+            border: none;
+            padding: 12px 20px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            box-shadow: 0 2px 5px var(--shadow-color);
+            transition: background-color 0.2s ease;
+        }
+
+        .control-button:hover {
+            background-color: #333;
+        }
+
+        /* Modal Styles */
+        .modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: none; /* Hidden by default */
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            -webkit-backdrop-filter: blur(5px);
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            background-color: var(--modal-background);
+            padding: 25px;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 320px;
+            box-shadow: 0 8px 25px var(--shadow-color);
+        }
+
+        .modal-content h2 {
+            margin-bottom: 20px;
+            font-size: 18px;
+            text-align: center;
+        }
+
+        .modal-content input {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 15px;
+            border-radius: 10px;
+            border: 1px solid var(--icon-background);
+            background-color: var(--surface-color);
+            color: var(--primary-text-color);
+            font-size: 16px;
+        }
+
+        .modal-buttons {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        
+        /* Folder View Modal */
+        #folder-view-modal.modal-backdrop {
+             background-color: rgba(18, 18, 18, 0.9);
+        }
+
+        .folder-view-content {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+        }
+
+        .folder-view-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-shrink: 0;
+            padding: 0 10px;
+        }
+
+        #folder-view-name {
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        #folder-view-close {
+            font-size: 32px;
+            line-height: 1;
+            padding: 0px 12px;
+            background-color: transparent;
+            box-shadow: none;
+            font-weight: 300;
+        }
+
+        #folder-app-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+            gap: 20px;
+            padding: 10px;
+            flex-grow: 1;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        /* Context Menu for Deletion */
+        #context-menu {
+            position: absolute;
+            display: none;
+            background-color: var(--modal-background);
+            border-radius: 8px;
+            box-shadow: 0 4px 12px var(--shadow-color);
+            z-index: 100;
+            padding: 5px;
+        }
+        #context-menu button {
+            background: none;
+            border: none;
+            color: #ff5c5c;
+            padding: 8px 12px;
+            width: 100%;
+            text-align: left;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        #context-menu button:hover {
+            background-color: rgba(255, 92, 92, 0.1);
+        }
+
+        /*profile image things*/
+        .profile-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            padding: 20px;
+            background-color: #2c2c2c2c;
+            border-radius: 20px;
+        }
+
+        .profile-ring {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, rgba(221, 221, 221, 0.3), rgba(46, 46, 46, 0.3));
+            padding: 3px;
+            box-shadow: 0 0 20px rgba(219, 219, 219, 0.158);
+        }
+
+        .profile-inner {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .profile-image {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+
+        .profile-image img {
+            height: 130px;
+        }
+
+
+    </style>
+</head>
+<body>
+    <div class="profile-container">
+        <div class="profile-ring">
+            <div class="profile-inner">
+                <div class="profile-image">
+                    <img src="https://lh3.googleusercontent.com/a/ACg8ocIjXTU5TaTnx9wb_kNcPQg8kCZo2b_iQ9tlQLjsaN-ngbwf3eT-=s288-c-no" alt="syamraj">
+                </div>
+            </div>
+        </div>
+        <h2 style="color: #dadada6b; padding: 10px;">Home</h2>
+    </div>
+    
+    <div id="app-grid">
+        <!-- App icons will be dynamically inserted here -->
+    </div>
+
+    <div id="controls">
+        <button id="add-link-btn" class="control-button">Add Link</button>
+        <button id="add-folder-btn" class="control-button">Add Folder</button>
+    </div>
+
+    <!-- Add Link Modal -->
+    <div id="add-link-modal" class="modal-backdrop">
+        <div class="modal-content">
+            <h2>Add New Link</h2>
+            <form id="add-link-form">
+                <input type="text" id="link-name" placeholder="Syamraj" required>
+                <input type="url" id="link-url" placeholder="https://syamraj.com" required>
+                <div class="modal-buttons">
+                    <button type="button" class="modal-cancel control-button">Cancel</button>
+                    <button type="submit" class="control-button">Add</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Folder Modal -->
+    <div id="add-folder-modal" class="modal-backdrop">
+        <div class="modal-content">
+            <h2>Create New Folder</h2>
+            <form id="add-folder-form">
+                <input type="text" id="folder-name" placeholder="Folder Name (e.g., Social)" required>
+                <div class="modal-buttons">
+                    <button type="button" class="modal-cancel control-button">Cancel</button>
+                    <button type="submit" class="control-button">Create</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Folder View Modal -->
+    <div id="folder-view-modal" class="modal-backdrop">
+        <div class="folder-view-content">
+            <div class="folder-view-header">
+                <h2 id="folder-view-name">Folder</h2>
+                <button id="folder-view-close" class="control-button">&times;</button>
+            </div>
+            <div id="folder-app-grid">
+                <!-- Apps from the folder will be dynamically inserted here -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- Context Menu for Deletion -->
+    <div id="context-menu">
+        <button id="delete-btn">Delete</button>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- State and Constants ---
+            const STORAGE_KEY = 'mobileLauncherItems';
+            let items = [];
+            let longPressTimer;
+            let draggedItemId = null;
+
+            // --- DOM Element References ---
+            const appGrid = document.getElementById('app-grid');
+            const contextMenu = document.getElementById('context-menu');
+            const deleteBtn = document.getElementById('delete-btn');
+            const addLinkModal = document.getElementById('add-link-modal');
+            const addFolderModal = document.getElementById('add-folder-modal');
+            const folderViewModal = document.getElementById('folder-view-modal');
+            const folderViewName = document.getElementById('folder-view-name');
+            const folderAppGrid = document.getElementById('folder-app-grid');
+            const folderViewClose = document.getElementById('folder-view-close');
+
+            // --- Data Functions (localStorage) ---
+            const loadItems = () => {
+                const storedItems = localStorage.getItem(STORAGE_KEY);
+                items = storedItems ? JSON.parse(storedItems) : [];
+            };
+
+            const saveItems = () => {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+            };
+
+            // --- Rendering Functions ---
+            const render = () => {
+                appGrid.innerHTML = ''; // Clear the grid before rendering
+                items.forEach(item => {
+                    const element = createItemElement(item);
+                    appGrid.appendChild(element);
+                });
+            };
+
+            const createItemElement = (item) => {
+                return item.type === 'folder' ? createFolderElement(item) : createAppElement(item);
+            };
+
+            const createAppElement = (item) => {
+                const a = document.createElement('a');
+                a.href = item.url;
+                a.className = 'app-item';
+                a.dataset.id = item.id;
+                a.dataset.type = 'link';
+
+                const iconDiv = document.createElement('div');
+                iconDiv.className = 'app-icon';
+
+                const img = document.createElement('img');
+                img.src = `https://www.google.com/s2/favicons?domain=${item.url}&sz=128`;
+                img.alt = item.name;
+                img.onerror = (e) => { 
+                    e.target.src = `https://placehold.co/64/2a2a2a/e0e0e0?text=${item.name.charAt(0)}`;
+                };
+
+                iconDiv.appendChild(img);
+
+                const nameSpan = document.createElement('span');
+                nameSpan.className = 'app-name';
+                nameSpan.textContent = item.name;
+
+                a.append(iconDiv, nameSpan);
+                addEventListenersToElement(a, item);
+                return a;
+            };
+
+            const createFolderElement = (item) => {
+                const div = document.createElement('div');
+                div.className = 'folder-item';
+                div.dataset.id = item.id;
+                div.dataset.type = 'folder';
+
+                const iconDiv = document.createElement('div');
+                iconDiv.className = 'folder-icon';
+
+                if (item.items && item.items.length > 0) {
+                    item.items.slice(0, 4).forEach(subItem => {
+                        const miniIcon = document.createElement('img');
+                        miniIcon.className = 'mini-icon';
+                        miniIcon.src = `https://www.google.com/s2/favicons?domain=${subItem.url}&sz=32`;
+                        miniIcon.onerror = (e) => { 
+                            e.target.src = `https://placehold.co/32/2a2a2a/e0e0e0?text=${subItem.name.charAt(0)}`;
+                        };
+                        iconDiv.appendChild(miniIcon);
+                    });
+                }
+
+                const nameSpan = document.createElement('span');
+                nameSpan.className = 'app-name';
+                nameSpan.textContent = item.name;
+                
+                div.append(iconDiv, nameSpan);
+                addEventListenersToElement(div, item);
+                
+                div.addEventListener('click', () => {
+                    if (div.dataset.longPressed === "true") {
+                        div.dataset.longPressed = "false";
+                        return;
+                    }
+                    openFolderView(item);
+                });
+
+                return div;
+            };
+
+            const createFolderAppElement = (subItem) => {
+                const a = document.createElement('a');
+                a.href = subItem.url;
+                a.className = 'app-item';
+                a.target = "_blank";
+
+                const iconDiv = document.createElement('div');
+                iconDiv.className = 'app-icon';
+
+                const img = document.createElement('img');
+                img.src = `https://www.google.com/s2/favicons?domain=${subItem.url}&sz=128`;
+                img.alt = subItem.name;
+                img.onerror = (e) => { 
+                    e.target.src = `https://placehold.co/64/2a2a2a/e0e0e0?text=${subItem.name.charAt(0)}`;
+                };
+
+                iconDiv.appendChild(img);
+
+                const nameSpan = document.createElement('span');
+                nameSpan.className = 'app-name';
+                nameSpan.textContent = subItem.name;
+
+                a.append(iconDiv, nameSpan);
+                return a;
+            };
+
+            // --- Event Handling and Logic ---
+            const addEventListenersToElement = (element, item) => {
+                element.draggable = true;
+
+                element.addEventListener('touchstart', (e) => {
+                    if (item.type === 'link') return;
+                    clearTimeout(longPressTimer);
+                    longPressTimer = setTimeout(() => {
+                        showContextMenu(e, item.id);
+                        element.dataset.longPressed = "true";
+                    }, 500);
+                });
+
+                element.addEventListener('touchend', () => clearTimeout(longPressTimer));
+                element.addEventListener('touchmove', () => clearTimeout(longPressTimer));
+                
+                element.addEventListener('contextmenu', (e) => {
+                    e.preventDefault();
+                    showContextMenu(e, item.id);
+                });
+
+                element.addEventListener('dragstart', (e) => {
+                    draggedItemId = item.id;
+                    e.dataTransfer.setData('text/plain', item.id);
+                    setTimeout(() => element.classList.add('dragging'), 0);
+                });
+
+                element.addEventListener('dragend', () => {
+                    element.classList.remove('dragging');
+                    draggedItemId = null;
+                });
+
+                element.addEventListener('dragover', (e) => {
+                    if (item.type === 'folder' && draggedItemId !== item.id) {
+                        e.preventDefault();
+                        element.classList.add('drag-over');
+                    }
+                });
+
+                element.addEventListener('dragleave', () => element.classList.remove('drag-over'));
+
+                element.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    element.classList.remove('drag-over');
+                    if (item.type === 'folder' && draggedItemId && draggedItemId !== item.id) {
+                        moveLinkToFolder(draggedItemId, item.id);
+                    }
+                });
+            };
+            
+            const moveLinkToFolder = (linkId, folderId) => {
+                const linkIndex = items.findIndex(item => item.id === linkId);
+                const folderIndex = items.findIndex(item => item.id === folderId);
+
+                if (linkIndex === -1 || folderIndex === -1) return;
+                
+                const linkToMove = items[linkIndex];
+                if(linkToMove.type !== 'link') return;
+
+                items[folderIndex].items.push({ name: linkToMove.name, url: linkToMove.url });
+                items.splice(linkIndex, 1);
+
+                saveItems();
+                render();
+            };
+
+            const showContextMenu = (event, itemId) => {
+                hideContextMenu();
+                contextMenu.style.display = 'block';
+                const touch = event.touches ? event.touches[0] : event;
+                contextMenu.style.left = `${touch.clientX}px`;
+                contextMenu.style.top = `${touch.clientY}px`;
+                deleteBtn.dataset.id = itemId;
+            };
+
+            const hideContextMenu = () => {
+                contextMenu.style.display = 'none';
+            };
+
+            const openFolderView = (folderItem) => {
+                folderViewName.textContent = folderItem.name;
+                folderAppGrid.innerHTML = '';
+
+                if (folderItem.items && folderItem.items.length > 0) {
+                    folderItem.items.forEach(subItem => {
+                        const appElement = createFolderAppElement(subItem);
+                        folderAppGrid.appendChild(appElement);
+                    });
+                } else {
+                    folderAppGrid.innerHTML = `<p style="color: var(--secondary-text-color); text-align: center;">This folder is empty.</p>`;
+                }
+                folderViewModal.style.display = 'flex';
+            };
+
+            // --- Initial Setup ---
+            const initialize = () => {
+                loadItems();
+                render();
+
+                document.addEventListener('click', (e) => {
+                    if (!contextMenu.contains(e.target)) hideContextMenu();
+                });
+                
+                deleteBtn.addEventListener('click', (e) => {
+                    const idToDelete = e.target.dataset.id;
+                    if (idToDelete) {
+                        items = items.filter(item => item.id !== idToDelete);
+                        saveItems();
+                        render();
+                        hideContextMenu();
+                    }
+                });
+
+                const cancelButtons = document.querySelectorAll('.modal-cancel');
+                cancelButtons.forEach(btn => btn.addEventListener('click', () => {
+                    addLinkModal.style.display = 'none';
+                    addFolderModal.style.display = 'none';
+                }));
+
+                document.getElementById('add-link-btn').addEventListener('click', () => {
+                    addLinkModal.style.display = 'flex';
+                    document.getElementById('link-name').focus();
+                });
+
+                document.getElementById('add-folder-btn').addEventListener('click', () => {
+                    addFolderModal.style.display = 'flex';
+                    document.getElementById('folder-name').focus();
+                });
+
+                folderViewClose.addEventListener('click', () => {
+                    folderViewModal.style.display = 'none';
+                });
+
+                document.getElementById('add-link-form').addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    const name = document.getElementById('link-name').value;
+                    const url = document.getElementById('link-url').value;
+                    items.push({ id: crypto.randomUUID(), type: 'link', name, url });
+                    saveItems();
+                    render();
+                    e.target.reset();
+                    addLinkModal.style.display = 'none';
+                });
+
+                document.getElementById('add-folder-form').addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    const name = document.getElementById('folder-name').value;
+                    items.push({ id: crypto.randomUUID(), type: 'folder', name, items: [] });
+                    saveItems();
+                    render();
+                    e.target.reset();
+                    addFolderModal.style.display = 'none';
+                });
+            };
+
+            initialize();
+        });
+    </script>
+</body>
+</html>
