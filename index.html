@@ -56,6 +56,9 @@
             display: flex;
             flex-direction: column;
             padding: 20px 10px;
+            height: 100dvh; /* CHANGE: Use dynamic viewport height for better mobile accuracy */
+            overflow: hidden; 
+            -webkit-tap-highlight-color: transparent;
         }
         
         #main-title {
@@ -72,8 +75,7 @@
             grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
             gap: 20px;
             padding: 20px;
-            flex-grow: 1;
-            overflow-y: auto; /* Allow scrolling only within the grid */
+            overflow-y: auto; /* This now works correctly with the parent flex container */
             -webkit-overflow-scrolling: touch;
         }
 
@@ -307,6 +309,7 @@
             padding: 20px;
             background-color: #2c2c2c2c;
             border-radius: 20px;
+            flex-shrink: 0; /* ADDED: Prevents the profile section from shrinking */
         }
 
         .profile-ring {
