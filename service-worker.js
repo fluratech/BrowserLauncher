@@ -1,7 +1,7 @@
 const cacheName = 'syamraj-launcher-v1';
 const filesToCache = [
   './',
-  './BrowserLauncher.html',
+  './index.html',
   './manifest.json',
   './syamraj_logo.png'
 ];
