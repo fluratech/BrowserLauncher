@@ -423,298 +423,265 @@
         <button id="delete-btn">Delete</button>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // --- State and Constants ---
-            const STORAGE_KEY = 'mobileLauncherItems';
-            let items = [];
-            let longPressTimer;
-            let draggedItemId = null;
+        // --- State and Constants ---
+        const STORAGE_KEY = 'mobileLauncherItems';
+        let items = [];
+        let longPressTimer;
+        // No longer need draggedItemId
+        
+        // --- DOM Element References ---
+        const appGrid = document.getElementById('app-grid');
+        const contextMenu = document.getElementById('context-menu');
+        const deleteBtn = document.getElementById('delete-btn');
+        const addLinkModal = document.getElementById('add-link-modal');
+        const addFolderModal = document.getElementById('add-folder-modal');
+        const folderViewModal = document.getElementById('folder-view-modal');
+        const folderViewName = document.getElementById('folder-view-name');
+        const folderAppGrid = document.getElementById('folder-app-grid');
+        const folderViewClose = document.getElementById('folder-view-close');
 
-            // --- DOM Element References ---
-            const appGrid = document.getElementById('app-grid');
-            const contextMenu = document.getElementById('context-menu');
-            const deleteBtn = document.getElementById('delete-btn');
-            const addLinkModal = document.getElementById('add-link-modal');
-            const addFolderModal = document.getElementById('add-folder-modal');
-            const folderViewModal = document.getElementById('folder-view-modal');
-            const folderViewName = document.getElementById('folder-view-name');
-            const folderAppGrid = document.getElementById('folder-app-grid');
-            const folderViewClose = document.getElementById('folder-view-close');
+        // --- Data Functions (localStorage) ---
+        const loadItems = () => {
+            const storedItems = localStorage.getItem(STORAGE_KEY);
+            items = storedItems ? JSON.parse(storedItems) : [];
+        };
 
-            // --- Data Functions (localStorage) ---
-            const loadItems = () => {
-                const storedItems = localStorage.getItem(STORAGE_KEY);
-                items = storedItems ? JSON.parse(storedItems) : [];
-            };
+        const saveItems = () => {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+        };
 
-            const saveItems = () => {
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-            };
+        // --- Rendering Functions ---
+        const render = () => {
+            appGrid.innerHTML = '';
+            items.forEach(item => {
+                const element = createItemElement(item);
+                appGrid.appendChild(element);
+            });
+            initializeSortable(); // Re-initialize SortableJS after every render
+        };
 
-            // --- Rendering Functions ---
-            const render = () => {
-                appGrid.innerHTML = ''; // Clear the grid before rendering
-                items.forEach(item => {
-                    const element = createItemElement(item);
-                    appGrid.appendChild(element);
+        const createItemElement = (item) => {
+            const element = item.type === 'folder' ? createFolderElement(item) : createAppElement(item);
+            addEventListenersToElement(element, item); // Add long-press and click listeners
+            return element;
+        };
+
+        const createAppElement = (item) => {
+            const a = document.createElement('a');
+            a.href = item.url;
+            a.className = 'app-item';
+            a.dataset.id = item.id;
+            a.dataset.type = 'link';
+
+            const iconDiv = document.createElement('div');
+            iconDiv.className = 'app-icon';
+            const img = document.createElement('img');
+            img.src = `https://www.google.com/s2/favicons?domain=${item.url}&sz=128`;
+            img.alt = item.name;
+            img.onerror = (e) => { e.target.src = `https://placehold.co/64/2a2a2a/e0e0e0?text=${item.name.charAt(0)}`; };
+            iconDiv.appendChild(img);
+
+            const nameSpan = document.createElement('span');
+            nameSpan.className = 'app-name';
+            nameSpan.textContent = item.name;
+            a.append(iconDiv, nameSpan);
+            return a;
+        };
+
+        const createFolderElement = (item) => {
+            const div = document.createElement('div');
+            div.className = 'folder-item';
+            div.dataset.id = item.id;
+            div.dataset.type = 'folder';
+
+            const iconDiv = document.createElement('div');
+            iconDiv.className = 'folder-icon';
+            if (item.items && item.items.length > 0) {
+                item.items.slice(0, 4).forEach(subItem => {
+                    const miniIcon = document.createElement('img');
+                    miniIcon.className = 'mini-icon';
+                    miniIcon.src = `https://www.google.com/s2/favicons?domain=${subItem.url}&sz=32`;
+                    miniIcon.onerror = (e) => { e.target.src = `https://placehold.co/32/2a2a2a/e0e0e0?text=${subItem.name.charAt(0)}`; };
+                    iconDiv.appendChild(miniIcon);
                 });
-            };
-
-            const createItemElement = (item) => {
-                return item.type === 'folder' ? createFolderElement(item) : createAppElement(item);
-            };
-
-            const createAppElement = (item) => {
-                const a = document.createElement('a');
-                a.href = item.url;
-                a.className = 'app-item';
-                a.dataset.id = item.id;
-                a.dataset.type = 'link';
-
-                const iconDiv = document.createElement('div');
-                iconDiv.className = 'app-icon';
-
-                const img = document.createElement('img');
-                img.src = `https://www.google.com/s2/favicons?domain=${item.url}&sz=128`;
-                img.alt = item.name;
-                img.onerror = (e) => { 
-                    e.target.src = `https://placehold.co/64/2a2a2a/e0e0e0?text=${item.name.charAt(0)}`;
-                };
-
-                iconDiv.appendChild(img);
-
-                const nameSpan = document.createElement('span');
-                nameSpan.className = 'app-name';
-                nameSpan.textContent = item.name;
-
-                a.append(iconDiv, nameSpan);
-                addEventListenersToElement(a, item);
-                return a;
-            };
-
-            const createFolderElement = (item) => {
-                const div = document.createElement('div');
-                div.className = 'folder-item';
-                div.dataset.id = item.id;
-                div.dataset.type = 'folder';
-
-                const iconDiv = document.createElement('div');
-                iconDiv.className = 'folder-icon';
-
-                if (item.items && item.items.length > 0) {
-                    item.items.slice(0, 4).forEach(subItem => {
-                        const miniIcon = document.createElement('img');
-                        miniIcon.className = 'mini-icon';
-                        miniIcon.src = `https://www.google.com/s2/favicons?domain=${subItem.url}&sz=32`;
-                        miniIcon.onerror = (e) => { 
-                            e.target.src = `https://placehold.co/32/2a2a2a/e0e0e0?text=${subItem.name.charAt(0)}`;
-                        };
-                        iconDiv.appendChild(miniIcon);
-                    });
+            }
+            const nameSpan = document.createElement('span');
+            nameSpan.className = 'app-name';
+            nameSpan.textContent = item.name;
+            div.append(iconDiv, nameSpan);
+            
+            div.addEventListener('click', () => {
+                if (div.dataset.longPressed === "true") {
+                    div.dataset.longPressed = "false";
+                    return;
                 }
+                openFolderView(item);
+            });
+            return div;
+        };
+        
+        // --- SortableJS Drag and Drop ---
+        let sortableInstance = null;
+        const initializeSortable = () => {
+            if (sortableInstance) {
+                sortableInstance.destroy();
+            }
+            sortableInstance = new Sortable(appGrid, {
+                animation: 150,
+                filter: '.folder-item', // Folders themselves cannot be dragged
+                onEnd: (evt) => {
+                    const draggedItemEl = evt.item;
+                    // Find the element the item was dropped on using the final touch/mouse position
+                    const dropTargetEl = document.elementFromPoint(evt.originalEvent.clientX, evt.originalEvent.clientY);
 
-                const nameSpan = document.createElement('span');
-                nameSpan.className = 'app-name';
-                nameSpan.textContent = item.name;
-                
-                div.append(iconDiv, nameSpan);
-                addEventListenersToElement(div, item);
-                
-                div.addEventListener('click', () => {
-                    if (div.dataset.longPressed === "true") {
-                        div.dataset.longPressed = "false";
+                    if (!dropTargetEl) {
+                        render(); // If dropped in empty space, re-render to reset position
                         return;
                     }
-                    openFolderView(item);
-                });
+                    
+                    const folderTarget = dropTargetEl.closest('.folder-item');
 
-                return div;
-            };
+                    if (folderTarget && draggedItemEl.dataset.type === 'link') {
+                        const linkId = draggedItemEl.dataset.id;
+                        const folderId = folderTarget.dataset.id;
+                        moveLinkToFolder(linkId, folderId);
+                    } else {
+                        // If not dropped on a folder, reset position by re-rendering
+                        render();
+                    }
+                }
+            });
+        };
 
-            const createFolderAppElement = (subItem) => {
-                const a = document.createElement('a');
-                a.href = subItem.url;
-                a.className = 'app-item';
-                a.target = "_blank";
-
-                const iconDiv = document.createElement('div');
-                iconDiv.className = 'app-icon';
-
-                const img = document.createElement('img');
-                img.src = `https://www.google.com/s2/favicons?domain=${subItem.url}&sz=128`;
-                img.alt = subItem.name;
-                img.onerror = (e) => { 
-                    e.target.src = `https://placehold.co/64/2a2a2a/e0e0e0?text=${subItem.name.charAt(0)}`;
-                };
-
-                iconDiv.appendChild(img);
-
-                const nameSpan = document.createElement('span');
-                nameSpan.className = 'app-name';
-                nameSpan.textContent = subItem.name;
-
-                a.append(iconDiv, nameSpan);
-                return a;
-            };
-
-            // --- Event Handling and Logic ---
-            const addEventListenersToElement = (element, item) => {
-                element.draggable = true;
-
-                element.addEventListener('touchstart', (e) => {
-                    if (item.type === 'link') return;
-                    clearTimeout(longPressTimer);
-                    longPressTimer = setTimeout(() => {
-                        showContextMenu(e, item.id);
-                        element.dataset.longPressed = "true";
-                    }, 500);
-                });
-
-                element.addEventListener('touchend', () => clearTimeout(longPressTimer));
-                element.addEventListener('touchmove', () => clearTimeout(longPressTimer));
-                
-                element.addEventListener('contextmenu', (e) => {
-                    e.preventDefault();
+        // --- Event Handling and Logic ---
+        const addEventListenersToElement = (element, item) => {
+            // Long press for deletion context menu
+            element.addEventListener('touchstart', (e) => {
+                clearTimeout(longPressTimer);
+                longPressTimer = setTimeout(() => {
+                    // Vibrate for feedback on long press
+                    if (navigator.vibrate) navigator.vibrate(50);
                     showContextMenu(e, item.id);
-                });
+                    element.dataset.longPressed = "true";
+                }, 500);
+            });
+            element.addEventListener('touchend', () => clearTimeout(longPressTimer));
+            element.addEventListener('touchmove', () => clearTimeout(longPressTimer));
+            element.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                showContextMenu(e, item.id);
+            });
+        };
+        
+        const moveLinkToFolder = (linkId, folderId) => {
+            const linkIndex = items.findIndex(item => item.id === linkId);
+            const folderIndex = items.findIndex(item => item.id === folderId);
 
-                element.addEventListener('dragstart', (e) => {
-                    draggedItemId = item.id;
-                    e.dataTransfer.setData('text/plain', item.id);
-                    setTimeout(() => element.classList.add('dragging'), 0);
-                });
-
-                element.addEventListener('dragend', () => {
-                    element.classList.remove('dragging');
-                    draggedItemId = null;
-                });
-
-                element.addEventListener('dragover', (e) => {
-                    if (item.type === 'folder' && draggedItemId !== item.id) {
-                        e.preventDefault();
-                        element.classList.add('drag-over');
-                    }
-                });
-
-                element.addEventListener('dragleave', () => element.classList.remove('drag-over'));
-
-                element.addEventListener('drop', (e) => {
-                    e.preventDefault();
-                    element.classList.remove('drag-over');
-                    if (item.type === 'folder' && draggedItemId && draggedItemId !== item.id) {
-                        moveLinkToFolder(draggedItemId, item.id);
-                    }
-                });
-            };
+            if (linkIndex === -1 || folderIndex === -1 || linkId === folderId) return;
             
-            const moveLinkToFolder = (linkId, folderId) => {
-                const linkIndex = items.findIndex(item => item.id === linkId);
-                const folderIndex = items.findIndex(item => item.id === folderId);
+            const linkToMove = items[linkIndex];
+            if (linkToMove.type !== 'link') return;
 
-                if (linkIndex === -1 || folderIndex === -1) return;
-                
-                const linkToMove = items[linkIndex];
-                if(linkToMove.type !== 'link') return;
+            items[folderIndex].items.push({ name: linkToMove.name, url: linkToMove.url });
+            items.splice(linkIndex, 1);
 
-                items[folderIndex].items.push({ name: linkToMove.name, url: linkToMove.url });
-                items.splice(linkIndex, 1);
+            saveItems();
+            render();
+        };
 
+        const showContextMenu = (event, itemId) => {
+            hideContextMenu();
+            contextMenu.style.display = 'block';
+            const touch = event.touches ? event.touches[0] : event;
+            contextMenu.style.left = `${touch.clientX}px`;
+            contextMenu.style.top = `${touch.clientY}px`;
+            deleteBtn.dataset.id = itemId;
+        };
+
+        const hideContextMenu = () => contextMenu.style.display = 'none';
+
+        const openFolderView = (folderItem) => {
+            folderViewName.textContent = folderItem.name;
+            folderAppGrid.innerHTML = ''; // Clear previous content
+
+            if (folderItem.items && folderItem.items.length > 0) {
+                folderItem.items.forEach(subItem => {
+                    // Reusing the createAppElement logic for items inside a folder
+                    const appElement = createAppElement({ ...subItem, id: null, url: subItem.url });
+                    appElement.target = "_blank"; // Open folder links in new tab
+                    folderAppGrid.appendChild(appElement);
+                });
+            } else {
+                folderAppGrid.innerHTML = `<p style="color: var(--secondary-text-color); text-align: center;">This folder is empty.</p>`;
+            }
+            folderViewModal.style.display = 'flex';
+        };
+
+        // --- Initial Setup ---
+        const initialize = () => {
+            loadItems();
+            render();
+
+            document.addEventListener('click', (e) => {
+                if (!contextMenu.contains(e.target)) hideContextMenu();
+            });
+            
+            deleteBtn.addEventListener('click', (e) => {
+                const idToDelete = e.target.dataset.id;
+                if (idToDelete) {
+                    items = items.filter(item => item.id !== idToDelete);
+                    saveItems();
+                    render();
+                    hideContextMenu();
+                }
+            });
+
+            document.querySelectorAll('.modal-cancel').forEach(btn => btn.addEventListener('click', (e) => {
+                e.target.closest('.modal-backdrop').style.display = 'none';
+            }));
+
+            document.getElementById('add-link-btn').addEventListener('click', () => {
+                addLinkModal.style.display = 'flex';
+                document.getElementById('link-name').focus();
+            });
+
+            document.getElementById('add-folder-btn').addEventListener('click', () => {
+                addFolderModal.style.display = 'flex';
+                document.getElementById('folder-name').focus();
+            });
+
+            folderViewClose.addEventListener('click', () => {
+                folderViewModal.style.display = 'none';
+            });
+
+            document.getElementById('add-link-form').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const name = document.getElementById('link-name').value;
+                const url = document.getElementById('link-url').value;
+                items.push({ id: crypto.randomUUID(), type: 'link', name, url });
                 saveItems();
                 render();
-            };
+                e.target.reset();
+                addLinkModal.style.display = 'none';
+            });
 
-            const showContextMenu = (event, itemId) => {
-                hideContextMenu();
-                contextMenu.style.display = 'block';
-                const touch = event.touches ? event.touches[0] : event;
-                contextMenu.style.left = `${touch.clientX}px`;
-                contextMenu.style.top = `${touch.clientY}px`;
-                deleteBtn.dataset.id = itemId;
-            };
-
-            const hideContextMenu = () => {
-                contextMenu.style.display = 'none';
-            };
-
-            const openFolderView = (folderItem) => {
-                folderViewName.textContent = folderItem.name;
-                folderAppGrid.innerHTML = '';
-
-                if (folderItem.items && folderItem.items.length > 0) {
-                    folderItem.items.forEach(subItem => {
-                        const appElement = createFolderAppElement(subItem);
-                        folderAppGrid.appendChild(appElement);
-                    });
-                } else {
-                    folderAppGrid.innerHTML = `<p style="color: var(--secondary-text-color); text-align: center;">This folder is empty.</p>`;
-                }
-                folderViewModal.style.display = 'flex';
-            };
-
-            // --- Initial Setup ---
-            const initialize = () => {
-                loadItems();
+            document.getElementById('add-folder-form').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const name = document.getElementById('folder-name').value;
+                items.push({ id: crypto.randomUUID(), type: 'folder', name, items: [] });
+                saveItems();
                 render();
+    e.target.reset();
+                addFolderModal.style.display = 'none';
+            });
+        };
 
-                document.addEventListener('click', (e) => {
-                    if (!contextMenu.contains(e.target)) hideContextMenu();
-                });
-                
-                deleteBtn.addEventListener('click', (e) => {
-                    const idToDelete = e.target.dataset.id;
-                    if (idToDelete) {
-                        items = items.filter(item => item.id !== idToDelete);
-                        saveItems();
-                        render();
-                        hideContextMenu();
-                    }
-                });
-
-                const cancelButtons = document.querySelectorAll('.modal-cancel');
-                cancelButtons.forEach(btn => btn.addEventListener('click', () => {
-                    addLinkModal.style.display = 'none';
-                    addFolderModal.style.display = 'none';
-                }));
-
-                document.getElementById('add-link-btn').addEventListener('click', () => {
-                    addLinkModal.style.display = 'flex';
-                    document.getElementById('link-name').focus();
-                });
-
-                document.getElementById('add-folder-btn').addEventListener('click', () => {
-                    addFolderModal.style.display = 'flex';
-                    document.getElementById('folder-name').focus();
-                });
-
-                folderViewClose.addEventListener('click', () => {
-                    folderViewModal.style.display = 'none';
-                });
-
-                document.getElementById('add-link-form').addEventListener('submit', (e) => {
-                    e.preventDefault();
-                    const name = document.getElementById('link-name').value;
-                    const url = document.getElementById('link-url').value;
-                    items.push({ id: crypto.randomUUID(), type: 'link', name, url });
-                    saveItems();
-                    render();
-                    e.target.reset();
-                    addLinkModal.style.display = 'none';
-                });
-
-                document.getElementById('add-folder-form').addEventListener('submit', (e) => {
-                    e.preventDefault();
-                    const name = document.getElementById('folder-name').value;
-                    items.push({ id: crypto.randomUUID(), type: 'folder', name, items: [] });
-                    saveItems();
-                    render();
-                    e.target.reset();
-                    addFolderModal.style.display = 'none';
-                });
-            };
-
-            initialize();
-        });
+        initialize();
+    });
     </script>
 </body>
 </html>
