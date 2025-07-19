@@ -56,10 +56,11 @@
             display: flex;
             flex-direction: column;
             padding: 20px 10px;
-            height: 100dvh; /* CHANGE: Use dynamic viewport height for better mobile accuracy */
+            height: 100dvh; 
             overflow: hidden; 
             -webkit-tap-highlight-color: transparent;
         }
+
         
         #main-title {
             text-align: center;
@@ -70,13 +71,17 @@
         }
 
         /* Main Grid for Apps and Folders */
+        .grid-scroll-container {
+            flex-grow: 1;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
         #app-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
             gap: 20px;
             padding: 20px;
-            overflow-y: auto; /* This now works correctly with the parent flex container */
-            -webkit-overflow-scrolling: touch;
         }
 
         /* Individual App/Folder Item Styling */
@@ -361,8 +366,9 @@
         <h2 style="color: #dadada6b; padding: 10px;">Home</h2>
     </div>
     
-    <div id="app-grid">
-        <!-- App icons will be dynamically inserted here -->
+    <div class="grid-scroll-container">
+        <div id="app-grid">
+        </div>
     </div>
 
     <div id="controls">
