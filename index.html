@@ -112,13 +112,14 @@
             background-color: var(--icon-background);
             flex-shrink: 0; /* Prevent icon from shrinking */
             transition: transform 0.2s ease, border 0.2s ease;
+            -webkit-touch-callout: none;
         }
 
         .app-icon img {
             width: 100%;
             height: 100%;
             object-fit: cover;
-            pointer-events: none;
+            -webkit-touch-callout: none;
         }
 
         /* Folder Specific Styling */
@@ -593,10 +594,6 @@
             const initialize = () => {
                 loadItems();
                 render();
-
-                document.querySelectorAll('a').forEach(el => {
-                    el.addEventListener('contextmenu', e => e.preventDefault());
-                });
 
                 // Global listeners for drag operations
                 document.addEventListener('touchmove', handleDragMove, { passive: false });
