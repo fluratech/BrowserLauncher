@@ -20,8 +20,9 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
 
+    
     <style>
-        /* CSS Reset and Variables */
+        /* CSS Reset and Basic Setup */
         :root {
             --background-color: #121212;
             --surface-color: #1e1e1e;
@@ -41,33 +42,35 @@
         }
 
         html {
-            scroll-behavior: smooth;
+            background-color: var(--background-color);
         }
-
-        /* UPDATED: Body now scrolls naturally */
+        
         body {
             font-family: 'Inter', sans-serif;
             background-color: var(--background-color);
             color: var(--primary-text-color);
-            -webkit-tap-highlight-color: transparent;
-            padding-bottom: 100px; /* Space for the bottom controls */
-        }
-
-        .main-container {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
             padding: 20px 10px;
+            -webkit-tap-highlight-color: transparent; /* Remove tap highlight on mobile */
+        }
+        
+        #main-title {
+            text-align: center;
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 10px;
+            flex-shrink: 0;
         }
 
-        #app-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
-            gap: 20px;
-            padding: 10px;
+        /* Main Grid for Apps and Folders */
+        #app-grid, #folder-app-grid {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: flex-start; /* Align items to the left */
+            gap: 20px; /* Spacing between items */
+            padding: 20px;
         }
 
-        /* App and Folder Item Styling */
+        /* Individual App/Folder Item Styling */
         .app-item, .folder-item {
             display: flex;
             flex-direction: column;
@@ -77,10 +80,11 @@
             color: var(--primary-text-color);
             position: relative;
             cursor: pointer;
-            transition: transform 0.2s ease;
-            touch-action: pan-y; /* Prioritize vertical scrolling */
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            width: 80px; /* Specific width for each grid item */
+            height: 110px; /* Specific height for each grid item */
         }
-
+        
         .app-item:active, .folder-item:active {
             transform: scale(0.95);
         }
@@ -96,6 +100,7 @@
             box-shadow: 0 4px 8px var(--shadow-color);
             overflow: hidden;
             background-color: var(--icon-background);
+            flex-shrink: 0; /* Prevent icon from shrinking */
         }
 
         .app-icon img {
@@ -104,6 +109,7 @@
             object-fit: cover;
         }
 
+        /* Folder Specific Styling */
         .folder-icon {
             background-color: var(--folder-background);
             display: grid;
@@ -124,18 +130,24 @@
         .app-name {
             font-size: 12px;
             word-break: break-word;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            text-overflow: ellipsis;
             padding: 0 2px;
         }
-
-        /* NEW: Style for the dragged item's clone */
-        .ghost-style {
-            opacity: 0.7;
-            transform: scale(1.1);
-            background: var(--accent-color);
-            border-radius: 16px;
+        
+        /* Dragging styles */
+        .dragging {
+            opacity: 0.5;
+        }
+        .drag-over {
+            border: 2px dashed var(--accent-color);
+            transform: scale(1.05);
         }
 
-        /* Controls are fixed at the bottom */
+        /* Controls and Modals */
         #controls {
             position: fixed;
             left: 0;
@@ -168,15 +180,15 @@
         /* Modal Styles */
         .modal-backdrop {
             position: fixed;
-            top: 0;
+            top: 100px;
             left: 0;
             width: 100%;
             height: 100%;
             background-color: rgba(0, 0, 0, 0.7);
-            display: none;
-            align-items: center;
+            display: none; /* Hidden by default */
             justify-content: center;
             z-index: 1000;
+            -webkit-backdrop-filter: blur(5px);
             backdrop-filter: blur(5px);
         }
 
@@ -189,7 +201,11 @@
             box-shadow: 0 8px 25px var(--shadow-color);
         }
 
-        .modal-content h2 { margin-bottom: 20px; font-size: 18px; text-align: center; }
+        .modal-content h2 {
+            margin-bottom: 20px;
+            font-size: 18px;
+            text-align: center;
+        }
 
         .modal-content input {
             width: 100%;
@@ -202,26 +218,71 @@
             font-size: 16px;
         }
 
-        .modal-buttons { display: flex; justify-content: flex-end; gap: 10px; }
+        .modal-buttons {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        
+        /* Folder View Modal */
+        #folder-view-modal.modal-backdrop {
+             background-color: rgba(18, 18, 18, 0.9);
+        }
 
-        #folder-view-modal { background-color: rgba(18, 18, 18, 0.9); }
-        .folder-view-content { width: 100%; height: 100%; display: flex; flex-direction: column; padding: 20px; }
-        .folder-view-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-shrink: 0; padding: 0 10px; }
-        #folder-view-name { font-size: 24px; font-weight: 700; }
-        #folder-view-close { font-size: 32px; line-height: 1; padding: 0px 12px; background-color: transparent; box-shadow: none; font-weight: 300; }
-        #folder-app-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 20px; padding: 10px; flex-grow: 1; overflow-y: auto; }
+        .folder-view-content {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+        }
+
+        .folder-view-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-shrink: 0;
+            padding: 0 10px;
+        }
+
+        #folder-view-name {
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        #folder-view-close {
+            font-size: 32px;
+            line-height: 1;
+            padding: 0px 12px;
+            background-color: transparent;
+            box-shadow: none;
+            font-weight: 300;
+        }
 
         /* Context Menu for Deletion */
-        #context-menu { position: absolute; display: none; background-color: var(--modal-background); border-radius: 8px; box-shadow: 0 4px 12px var(--shadow-color); z-index: 100; padding: 5px; }
-        #context-menu button { background: none; border: none; color: #ff5c5c; padding: 8px 12px; width: 100%; text-align: left; cursor: pointer; border-radius: 4px; }
-        #context-menu button:hover { background-color: rgba(255, 92, 92, 0.1); }
-
-        /* Profile Section */
-        .profile-container { display: flex; align-items: center; justify-content: center; flex-direction: column; padding: 20px; background-color: #2c2c2c2c; border-radius: 20px; }
-        .profile-ring { width: 120px; height: 120px; border-radius: 50%; background: linear-gradient(135deg, rgba(221, 221, 221, 0.3), rgba(46, 46, 46, 0.3)); padding: 3px; box-shadow: 0 0 20px rgba(219, 219, 219, 0.158); }
-        .profile-inner { width: 100%; height: 100%; border-radius: 50%; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
-        .profile-image { width: 100px; height: 100px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; }
-        .profile-image img { height: 130px; }
+        #context-menu {
+            position: absolute;
+            display: none;
+            background-color: var(--modal-background);
+            border-radius: 8px;
+            box-shadow: 0 4px 12px var(--shadow-color);
+            z-index: 100;
+            padding: 5px;
+        }
+        #context-menu button {
+            background: none;
+            border: none;
+            color: #ff5c5c;
+            padding: 8px 12px;
+            width: 100%;
+            text-align: left;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        #context-menu button:hover {
+            background-color: rgba(255, 92, 92, 0.1);
+        }
     </style>
 </head>
 <body>
@@ -236,9 +297,10 @@
             </div>
             <h2 style="color: #dadada6b; padding: 10px;">Home</h2>
         </div>
-        <div id="app-grid">
-            <!-- App icons will be dynamically inserted here -->
-        </div>
+    </div>
+
+    <div id="app-grid">
+        <!-- App icons will be dynamically inserted here -->
     </div>
 
     <div id="controls">
@@ -246,22 +308,60 @@
         <button id="add-folder-btn" class="control-button">Add Folder</button>
     </div>
 
-    <!-- All Modals -->
-    <div id="add-link-modal" class="modal-backdrop"> <div class="modal-content"> <h2>Add New Link</h2> <form id="add-link-form"> <input type="text" id="link-name" placeholder="Name" required> <input type="url" id="link-url" placeholder="https://example.com" required> <div class="modal-buttons"> <button type="button" class="modal-cancel control-button">Cancel</button> <button type="submit" class="control-button">Add</button> </div> </form> </div> </div>
-    <div id="add-folder-modal" class="modal-backdrop"> <div class="modal-content"> <h2>Create New Folder</h2> <form id="add-folder-form"> <input type="text" id="folder-name" placeholder="Folder Name" required> <div class="modal-buttons"> <button type="button" class="modal-cancel control-button">Cancel</button> <button type="submit" class="control-button">Create</button> </div> </form> </div> </div>
-    <div id="folder-view-modal" class="modal-backdrop"> <div class="folder-view-content"> <div class="folder-view-header"> <h2 id="folder-view-name">Folder</h2> <button id="folder-view-close" class="control-button">×</button> </div> <div id="folder-app-grid"></div> </div> </div>
-    <div id="context-menu"> <button id="delete-btn">Delete</button> </div>
+    <!-- Add Link Modal -->
+    <div id="add-link-modal" class="modal-backdrop">
+        <div class="modal-content">
+            <h2>Add New Link</h2>
+            <form id="add-link-form">
+                <input type="text" id="link-name" placeholder="Name (e.g., Google)" required>
+                <input type="url" id="link-url" placeholder="URL (e.g., https://google.com)" required>
+                <div class="modal-buttons">
+                    <button type="button" class="modal-cancel control-button">Cancel</button>
+                    <button type="submit" class="control-button">Add</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
-    <!-- SortableJS Library -->
-    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <!-- Add Folder Modal -->
+    <div id="add-folder-modal" class="modal-backdrop">
+        <div class="modal-content">
+            <h2>Create New Folder</h2>
+            <form id="add-folder-form">
+                <input type="text" id="folder-name" placeholder="Folder Name (e.g., Social)" required>
+                <div class="modal-buttons">
+                    <button type="button" class="modal-cancel control-button">Cancel</button>
+                    <button type="submit" class="control-button">Create</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
-    <!-- Main Application Logic -->
+    <!-- Folder View Modal -->
+    <div id="folder-view-modal" class="modal-backdrop">
+        <div class="folder-view-content">
+            <div class="folder-view-header">
+                <h2 id="folder-view-name">Folder</h2>
+                <button id="folder-view-close" class="control-button">&times;</button>
+            </div>
+            <div id="folder-app-grid">
+                <!-- Apps from the folder will be dynamically inserted here -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- Context Menu for Deletion -->
+    <div id="context-menu">
+        <button id="delete-btn">Delete</button>
+    </div>
+
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             // --- State and Constants ---
             const STORAGE_KEY = 'mobileLauncherItems';
             let items = [];
             let longPressTimer;
+            let draggedItemId = null;
 
             // --- DOM Element References ---
             const appGrid = document.getElementById('app-grid');
@@ -274,29 +374,27 @@
             const folderAppGrid = document.getElementById('folder-app-grid');
             const folderViewClose = document.getElementById('folder-view-close');
 
-            // --- Data Functions ---
+            // --- Data Functions (localStorage) ---
             const loadItems = () => {
                 const storedItems = localStorage.getItem(STORAGE_KEY);
                 items = storedItems ? JSON.parse(storedItems) : [];
             };
+
             const saveItems = () => {
                 localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
             };
 
             // --- Rendering Functions ---
             const render = () => {
-                appGrid.innerHTML = '';
+                appGrid.innerHTML = ''; // Clear the grid before rendering
                 items.forEach(item => {
                     const element = createItemElement(item);
                     appGrid.appendChild(element);
                 });
-                initializeSortable(); // Re-initialize after every render
             };
 
             const createItemElement = (item) => {
-                const element = item.type === 'folder' ? createFolderElement(item) : createAppElement(item);
-                addLongPressListener(element, item); // Add long-press for context menu
-                return element;
+                return item.type === 'folder' ? createFolderElement(item) : createAppElement(item);
             };
 
             const createAppElement = (item) => {
@@ -305,17 +403,25 @@
                 a.className = 'app-item';
                 a.dataset.id = item.id;
                 a.dataset.type = 'link';
+
                 const iconDiv = document.createElement('div');
                 iconDiv.className = 'app-icon';
+
                 const img = document.createElement('img');
                 img.src = `https://www.google.com/s2/favicons?domain=${item.url}&sz=128`;
                 img.alt = item.name;
-                img.onerror = (e) => { e.target.src = `https://placehold.co/64/2a2a2a/e0e0e0?text=${item.name.charAt(0)}`; };
+                img.onerror = (e) => { 
+                    e.target.src = `https://placehold.co/64/2a2a2a/e0e0e0?text=${item.name.charAt(0)}`;
+                };
+
                 iconDiv.appendChild(img);
+
                 const nameSpan = document.createElement('span');
                 nameSpan.className = 'app-name';
                 nameSpan.textContent = item.name;
+
                 a.append(iconDiv, nameSpan);
+                addEventListenersToElement(a, item);
                 return a;
             };
 
@@ -324,21 +430,29 @@
                 div.className = 'folder-item';
                 div.dataset.id = item.id;
                 div.dataset.type = 'folder';
+
                 const iconDiv = document.createElement('div');
                 iconDiv.className = 'folder-icon';
+
                 if (item.items && item.items.length > 0) {
                     item.items.slice(0, 4).forEach(subItem => {
                         const miniIcon = document.createElement('img');
                         miniIcon.className = 'mini-icon';
                         miniIcon.src = `https://www.google.com/s2/favicons?domain=${subItem.url}&sz=32`;
-                        miniIcon.onerror = (e) => { e.target.src = `https://placehold.co/32/2a2a2a/e0e0e0?text=${subItem.name.charAt(0)}`; };
+                        miniIcon.onerror = (e) => { 
+                            e.target.src = `https://placehold.co/32/2a2a2a/e0e0e0?text=${subItem.name.charAt(0)}`;
+                        };
                         iconDiv.appendChild(miniIcon);
                     });
                 }
+
                 const nameSpan = document.createElement('span');
                 nameSpan.className = 'app-name';
                 nameSpan.textContent = item.name;
+                
                 div.append(iconDiv, nameSpan);
+                addEventListenersToElement(div, item);
+                
                 div.addEventListener('click', () => {
                     if (div.dataset.longPressed === "true") {
                         div.dataset.longPressed = "false";
@@ -346,68 +460,98 @@
                     }
                     openFolderView(item);
                 });
+
                 return div;
             };
 
-            // --- SortableJS Drag and Drop ---
-            let sortableInstance = null;
-            const initializeSortable = () => {
-                if (sortableInstance) sortableInstance.destroy();
-                sortableInstance = new Sortable(appGrid, {
-                    animation: 150,
-                    filter: '.folder-item', // Prevent folders from being dragged
-                    // --- KEY CHANGES FOR SCROLLING AND DRAGGING ---
-                    delay: 200,             // Time in ms to wait before drag starts
-                    delayOnTouchOnly: true, // Only delay for touch, not mouse
-                    forceFallback: true,    // Creates a clone for smooth dragging over other elements
-                    ghostClass: "ghost-style", // The class for the cloned item
-                    onEnd: (evt) => {
-                        // Find what element the item was dropped on
-                        const draggedItemEl = evt.item;
-                        const dropTargetEl = document.elementFromPoint(evt.originalEvent.clientX, evt.originalEvent.clientY);
+            const createFolderAppElement = (subItem) => {
+                const a = document.createElement('a');
+                a.href = subItem.url;
+                a.className = 'app-item';
+                a.target = "_blank";
 
-                        if (!dropTargetEl) {
-                            render(); // Dropped in empty space, reset
-                            return;
-                        }
+                const iconDiv = document.createElement('div');
+                iconDiv.className = 'app-icon';
 
-                        const folderTarget = dropTargetEl.closest('.folder-item');
-                        if (folderTarget && draggedItemEl.dataset.type === 'link') {
-                            moveLinkToFolder(draggedItemEl.dataset.id, folderTarget.dataset.id);
-                        } else {
-                            // If not dropped on a valid folder, just re-render to cancel the drag
-                            render();
-                        }
-                    }
-                });
+                const img = document.createElement('img');
+                img.src = `https://www.google.com/s2/favicons?domain=${subItem.url}&sz=128`;
+                img.alt = subItem.name;
+                img.onerror = (e) => { 
+                    e.target.src = `https://placehold.co/64/2a2a2a/e0e0e0?text=${subItem.name.charAt(0)}`;
+                };
+
+                iconDiv.appendChild(img);
+
+                const nameSpan = document.createElement('span');
+                nameSpan.className = 'app-name';
+                nameSpan.textContent = subItem.name;
+
+                a.append(iconDiv, nameSpan);
+                return a;
             };
 
             // --- Event Handling and Logic ---
-            const addLongPressListener = (element, item) => {
+            const addEventListenersToElement = (element, item) => {
+                element.draggable = true;
+
                 element.addEventListener('touchstart', (e) => {
+                    if (item.type === 'link') return;
                     clearTimeout(longPressTimer);
                     longPressTimer = setTimeout(() => {
-                        if (navigator.vibrate) navigator.vibrate(50); // Haptic feedback
                         showContextMenu(e, item.id);
                         element.dataset.longPressed = "true";
-                    }, 800); // Longer delay for context menu to not conflict with drag
+                    }, 500);
                 });
+
                 element.addEventListener('touchend', () => clearTimeout(longPressTimer));
-                element.addEventListener('touchmove', () => clearTimeout(longPressTimer)); // Cancel on scroll
+                element.addEventListener('touchmove', () => clearTimeout(longPressTimer));
+                
                 element.addEventListener('contextmenu', (e) => {
                     e.preventDefault();
                     showContextMenu(e, item.id);
                 });
-            };
 
+                element.addEventListener('dragstart', (e) => {
+                    draggedItemId = item.id;
+                    e.dataTransfer.setData('text/plain', item.id);
+                    setTimeout(() => element.classList.add('dragging'), 0);
+                });
+
+                element.addEventListener('dragend', () => {
+                    element.classList.remove('dragging');
+                    draggedItemId = null;
+                });
+
+                element.addEventListener('dragover', (e) => {
+                    if (item.type === 'folder' && draggedItemId !== item.id) {
+                        e.preventDefault();
+                        element.classList.add('drag-over');
+                    }
+                });
+
+                element.addEventListener('dragleave', () => element.classList.remove('drag-over'));
+
+                element.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    element.classList.remove('drag-over');
+                    if (item.type === 'folder' && draggedItemId && draggedItemId !== item.id) {
+                        moveLinkToFolder(draggedItemId, item.id);
+                    }
+                });
+            };
+            
             const moveLinkToFolder = (linkId, folderId) => {
                 const linkIndex = items.findIndex(item => item.id === linkId);
                 const folderIndex = items.findIndex(item => item.id === folderId);
-                if (linkIndex === -1 || folderIndex === -1 || linkId === folderId) return;
+
+                if (linkIndex === -1 || folderIndex === -1) return;
+                
                 const linkToMove = items[linkIndex];
-                if (linkToMove.type !== 'link') return;
+                if(linkToMove.type !== 'link') return;
+
                 items[folderIndex].items.push({ name: linkToMove.name, url: linkToMove.url });
                 items.splice(linkIndex, 1);
+
                 saveItems();
                 render();
             };
@@ -420,15 +564,18 @@
                 contextMenu.style.top = `${touch.clientY}px`;
                 deleteBtn.dataset.id = itemId;
             };
-            const hideContextMenu = () => { contextMenu.style.display = 'none'; };
+
+            const hideContextMenu = () => {
+                contextMenu.style.display = 'none';
+            };
 
             const openFolderView = (folderItem) => {
                 folderViewName.textContent = folderItem.name;
                 folderAppGrid.innerHTML = '';
+
                 if (folderItem.items && folderItem.items.length > 0) {
                     folderItem.items.forEach(subItem => {
-                        const appElement = createAppElement({ ...subItem, id: null, url: subItem.url });
-                        appElement.target = "_blank";
+                        const appElement = createFolderAppElement(subItem);
                         folderAppGrid.appendChild(appElement);
                     });
                 } else {
@@ -441,8 +588,11 @@
             const initialize = () => {
                 loadItems();
                 render();
-                // Global event listeners
-                document.addEventListener('click', (e) => { if (!contextMenu.contains(e.target)) hideContextMenu(); });
+
+                document.addEventListener('click', (e) => {
+                    if (!contextMenu.contains(e.target)) hideContextMenu();
+                });
+                
                 deleteBtn.addEventListener('click', (e) => {
                     const idToDelete = e.target.dataset.id;
                     if (idToDelete) {
@@ -452,22 +602,49 @@
                         hideContextMenu();
                     }
                 });
-                document.querySelectorAll('.modal-cancel').forEach(btn => btn.addEventListener('click', (e) => { e.target.closest('.modal-backdrop').style.display = 'none'; }));
-                document.getElementById('add-link-btn').addEventListener('click', () => { addLinkModal.style.display = 'flex'; document.getElementById('link-name').focus(); });
-                document.getElementById('add-folder-btn').addEventListener('click', () => { addFolderModal.style.display = 'flex'; document.getElementById('folder-name').focus(); });
-                folderViewClose.addEventListener('click', () => { folderViewModal.style.display = 'none'; });
-                // Form submissions
+
+                const cancelButtons = document.querySelectorAll('.modal-cancel');
+                cancelButtons.forEach(btn => btn.addEventListener('click', () => {
+                    addLinkModal.style.display = 'none';
+                    addFolderModal.style.display = 'none';
+                }));
+
+                document.getElementById('add-link-btn').addEventListener('click', () => {
+                    addLinkModal.style.display = 'flex';
+                    document.getElementById('link-name').focus();
+                });
+
+                document.getElementById('add-folder-btn').addEventListener('click', () => {
+                    addFolderModal.style.display = 'flex';
+                    document.getElementById('folder-name').focus();
+                });
+
+                folderViewClose.addEventListener('click', () => {
+                    folderViewModal.style.display = 'none';
+                });
+
                 document.getElementById('add-link-form').addEventListener('submit', (e) => {
                     e.preventDefault();
-                    items.push({ id: crypto.randomUUID(), type: 'link', name: e.target.elements['link-name'].value, url: e.target.elements['link-url'].value });
-                    saveItems(); render(); e.target.reset(); addLinkModal.style.display = 'none';
+                    const name = document.getElementById('link-name').value;
+                    const url = document.getElementById('link-url').value;
+                    items.push({ id: crypto.randomUUID(), type: 'link', name, url });
+                    saveItems();
+                    render();
+                    e.target.reset();
+                    addLinkModal.style.display = 'none';
                 });
+
                 document.getElementById('add-folder-form').addEventListener('submit', (e) => {
                     e.preventDefault();
-                    items.push({ id: crypto.randomUUID(), type: 'folder', name: e.target.elements['folder-name'].value, items: [] });
-                    saveItems(); render(); e.target.reset(); addFolderModal.style.display = 'none';
+                    const name = document.getElementById('folder-name').value;
+                    items.push({ id: crypto.randomUUID(), type: 'folder', name, items: [] });
+                    saveItems();
+                    render();
+                    e.target.reset();
+                    addFolderModal.style.display = 'none';
                 });
             };
+
             initialize();
         });
     </script>
