@@ -86,9 +86,6 @@
             transition: transform 0.2s ease, opacity 0.2s ease;
             width: 80px; /* Specific width for each grid item */
             height: 110px; /* Specific height for each grid item */
-            -webkit-user-select: none;
-            -webkit-touch-callout: none;
-            user-select: none;
         }
 
         .app-item, .folder-item a {
@@ -118,9 +115,10 @@
         }
 
         .app-icon img {
-            -webkit-user-select: none;
-            -webkit-touch-callout: none;
-            user-select: none;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            pointer-events: none;
         }
 
         /* Folder Specific Styling */
@@ -332,6 +330,10 @@
     </div>
 
     <script>
+        document.querySelectorAll('.app-item, .folder-item a').forEach(el => {
+            el.addEventListener('contextmenu', e => e.preventDefault());
+        });
+
         document.addEventListener('DOMContentLoaded', () => {
             // --- State and Constants ---
             const STORAGE_KEY = 'mobileLauncherItems';
