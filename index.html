@@ -570,9 +570,6 @@
                 items.splice(linkIndex, 1);
                 saveItems();
                 render();
-                document.querySelectorAll('.app-item, .folder-item a').forEach(el => {
-                    el.addEventListener('contextmenu', e => e.preventDefault());
-                });
             };
             
             const deleteItem = (itemId) => {
@@ -596,6 +593,10 @@
             const initialize = () => {
                 loadItems();
                 render();
+
+                document.querySelectorAll('.app-item, .folder-item a').forEach(el => {
+                    el.addEventListener('contextmenu', e => e.preventDefault());
+                });
 
                 // Global listeners for drag operations
                 document.addEventListener('touchmove', handleDragMove, { passive: false });
