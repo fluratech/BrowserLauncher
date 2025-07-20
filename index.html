@@ -5,13 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Home</title>
 
-        <!-- Manifest link -->
-    <link rel="manifest" href="manifest.json" />
+        <link rel="manifest" href="manifest.json" />
 
-    <!-- Add an icon -->
     <link rel="syamraj" href="syamraj_logo.png" type="image/png" />
 
-    <!-- Register Service Worker -->
     <script>
         if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('service-worker.js')
@@ -275,15 +272,13 @@
     </div>
 
     <div id="app-grid">
-        <!-- App icons will be dynamically inserted here -->
-    </div>
+        </div>
 
     <div id="controls">
         <button id="add-link-btn" class="control-button">Add Link</button>
         <button id="add-folder-btn" class="control-button">Add Folder</button>
     </div>
 
-    <!-- Add Link Modal -->
     <div id="add-link-modal" class="modal-backdrop">
         <div class="modal-content">
             <h2>Add New Link</h2>
@@ -298,7 +293,6 @@
         </div>
     </div>
 
-    <!-- Add Folder Modal -->
     <div id="add-folder-modal" class="modal-backdrop">
         <div class="modal-content">
             <h2>Create New Folder</h2>
@@ -312,26 +306,22 @@
         </div>
     </div>
 
-    <!-- Folder View Modal -->
     <div id="folder-view-modal" class="modal-backdrop">
         <div class="folder-view-content">
             <div class="folder-view-header">
                 <h2 id="folder-view-name">Folder</h2>
-                <button id="folder-view-close" class="control-button">&times;</button>
+                <button id="folder-view-close" class="control-button">×</button>
             </div>
             <div id="folder-app-grid">
-                <!-- Apps from the folder will be dynamically inserted here -->
-            </div>
+                </div>
         </div>
     </div>
     
-    <!-- Delete Zone for Drag and Drop -->
     <div id="delete-zone">
         <span>Remove</span>
     </div>
 
     <script>
-
         document.addEventListener('DOMContentLoaded', () => {
             // --- State and Constants ---
             const STORAGE_KEY = 'mobileLauncherItems';
@@ -387,7 +377,6 @@
                 a.className = 'app-item';
                 a.dataset.id = item.id;
                 a.dataset.type = 'link';
-                a.style.webkitUserSelect = 'none';
                 const iconDiv = document.createElement('div');
                 iconDiv.className = 'app-icon';
                 const img = document.createElement('img');
@@ -449,6 +438,9 @@
 
             // --- Universal Drag and Drop Logic ---
             const addDragListenersToElement = (element, item) => {
+                // ✅ **FIX 1: Prevent context menu (long-press menu on mobile)**
+                element.addEventListener('contextmenu', e => e.preventDefault());
+
                 // Touch Events
                 element.addEventListener('touchstart', (e) => handleDragStart(e, element), { passive: false });
                 
@@ -492,7 +484,7 @@
             };
 
             const handleDragMove = (e) => {
-                clearTimeout(longPressTimer);
+                // ✅ **FIX 2: Do NOT clear the long press timer on move.** // This makes drag initiation more reliable.
                 if (!isDragging) return;
                 
                 // For touch, prevent scrolling page
@@ -644,10 +636,6 @@
             };
 
             initialize();
-        });
-
-        document.querySelectorAll('.app-item, .folder-item a').forEach(el => {
-            el.addEventListener('contextmenu', e => e.preventDefault());
         });
     </script>
 </body>
