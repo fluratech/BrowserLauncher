@@ -40,6 +40,7 @@
             padding: 20px 10px;
             -webkit-tap-highlight-color: transparent; /* Remove tap highlight on mobile */
             overflow-x: hidden;
+            user-select: none; /* Prevent text selection during drag */
         }
         
         /* Profile Section */
@@ -51,9 +52,9 @@
 
         /* Main Grid for Apps and Folders */
         #app-grid, #folder-app-grid {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: flex-start; /* Align items to the left */
+            display: grid;
+            grid-template-columns: repeat(auto-fill, 80px); /* Create as many 80px columns as fit */
+            justify-content: center; /* Center the grid container */
             gap: 20px; /* Spacing between items */
             padding: 20px;
         }
@@ -89,7 +90,7 @@
             overflow: hidden;
             background-color: var(--icon-background);
             flex-shrink: 0; /* Prevent icon from shrinking */
-            transition: transform 0.2s ease;
+            transition: transform 0.2s ease, border 0.2s ease;
         }
 
         .app-icon img {
@@ -231,6 +232,12 @@
             color: white;
         }
 
+        /* *** THE FIX IS HERE *** */
+        /* Prevent default image action on long press */
+        img {
+            pointer-events: none;
+            -webkit-touch-callout: none;
+        }
     </style>
 </head>
 <body>
@@ -239,7 +246,7 @@
         <div class="profile-ring">
             <div class="profile-inner">
                 <div class="profile-image">
-                    <img src="https://lh3.googleusercontent.com/a/ACg8ocIjXTU5TaTnx9wb_kNcPQg8kCZo2b_iQ9tlQLjsaN-ngbwf3eT-=s288-c-no" alt="syamraj">
+                    <img src="https://lh3.googleusercontent.com/a/ACg8ocIjXTU5TaTnx9wb_kNcPQg8kCZo2b_iQ9tlQLjsaN-ngbwf3eT-=s288-c-no" alt="syamraj" draggable="false">
                 </div>
             </div>
         </div>
@@ -315,6 +322,7 @@
             let dragClone = null;
             let lastDropTarget = null;
             let justDragged = false;
+            let isMouseDown = false;
 
             // --- DOM Element References ---
             const appGrid = document.getElementById('app-grid');
@@ -347,7 +355,7 @@
 
             const createItemElement = (item) => {
                 const element = item.type === 'folder' ? createFolderElement(item) : createAppElement(item);
-                addTouchListenersToElement(element, item);
+                addDragListenersToElement(element, item);
                 return element;
             };
 
@@ -362,6 +370,7 @@
                 const img = document.createElement('img');
                 img.src = `https://www.google.com/s2/favicons?domain=${item.url}&sz=128`;
                 img.alt = item.name;
+                img.draggable = false;
                 img.onerror = (e) => { e.target.src = `https://placehold.co/64/2a2a2a/e0e0e0?text=${item.name.charAt(0)}`; };
                 iconDiv.appendChild(img);
                 const nameSpan = document.createElement('span');
@@ -383,6 +392,7 @@
                         const miniIcon = document.createElement('img');
                         miniIcon.className = 'mini-icon';
                         miniIcon.src = `https://www.google.com/s2/favicons?domain=${subItem.url}&sz=32`;
+                        miniIcon.draggable = false;
                         miniIcon.onerror = (e) => { e.target.src = `https://placehold.co/32/2a2a2a/e0e0e0?text=${subItem.name.charAt(0)}`; };
                         iconDiv.appendChild(miniIcon);
                     });
@@ -404,6 +414,7 @@
                 const img = document.createElement('img');
                 img.src = `https://www.google.com/s2/favicons?domain=${subItem.url}&sz=128`;
                 img.alt = subItem.name;
+                img.draggable = false;
                 img.onerror = (e) => { e.target.src = `https://placehold.co/64/2a2a2a/e0e0e0?text=${subItem.name.charAt(0)}`; };
                 iconDiv.appendChild(img);
                 const nameSpan = document.createElement('span');
@@ -413,10 +424,14 @@
                 return a;
             };
 
-            // --- Mobile Drag and Drop Logic ---
-            const addTouchListenersToElement = (element, item) => {
-                element.addEventListener('touchstart', (e) => handleTouchStart(e, element), { passive: false });
+            // --- Universal Drag and Drop Logic ---
+            const addDragListenersToElement = (element, item) => {
+                // Touch Events
+                element.addEventListener('touchstart', (e) => handleDragStart(e, element), { passive: false });
                 
+                // Mouse Events
+                element.addEventListener('mousedown', (e) => handleDragStart(e, element));
+
                 // Prevent click firing after a drag
                 element.addEventListener('click', (e) => {
                     if (justDragged) {
@@ -428,11 +443,15 @@
                 }, true);
             };
 
-            const handleTouchStart = (e, element) => {
+            const handleDragStart = (e, element) => {
+                if (e.type === 'mousedown' && e.button !== 0) return; // Only left-click
+                
                 clearTimeout(longPressTimer);
                 justDragged = false;
+                
                 longPressTimer = setTimeout(() => {
                     isDragging = true;
+                    if (e.type === 'mousedown') isMouseDown = true;
                     draggedElement = element;
                     
                     // Create and position the clone
@@ -449,18 +468,20 @@
                 }, 500); // 500ms for long press
             };
 
-            const handleTouchMove = (e) => {
+            const handleDragMove = (e) => {
                 clearTimeout(longPressTimer);
-                if (!isDragging || !dragClone) return;
-                e.preventDefault();
+                if (!isDragging) return;
+                
+                // For touch, prevent scrolling page
+                if (e.type === 'touchmove') e.preventDefault();
 
-                const touch = e.touches[0];
-                dragClone.style.left = `${touch.clientX - dragClone.offsetWidth / 2}px`;
-                dragClone.style.top = `${touch.clientY - dragClone.offsetHeight / 2}px`;
+                const pointer = e.type === 'touchmove' ? e.touches[0] : e;
+                dragClone.style.left = `${pointer.clientX - dragClone.offsetWidth / 2}px`;
+                dragClone.style.top = `${pointer.clientY - dragClone.offsetHeight / 2}px`;
 
                 // Collision detection
                 dragClone.style.display = 'none'; // Hide clone to find element underneath
-                const elementUnder = document.elementFromPoint(touch.clientX, touch.clientY);
+                const elementUnder = document.elementFromPoint(pointer.clientX, pointer.clientY);
                 dragClone.style.display = ''; // Show it again
 
                 // Reset previous drop target
@@ -483,8 +504,8 @@
                     }
                 }
             };
-
-            const handleTouchEnd = () => {
+            
+            const handleDragEnd = () => {
                 clearTimeout(longPressTimer);
                 if (!isDragging) return;
                 
@@ -499,7 +520,7 @@
                         deleteItem(draggedId);
                     } else if (lastDropTarget.classList.contains('folder-item')) {
                         const draggedItem = items.find(i => i.id === draggedId);
-                        if(draggedItem.type === 'link') {
+                        if(draggedItem && draggedItem.type === 'link') {
                            moveLinkToFolder(draggedId, targetId);
                         }
                     }
@@ -511,11 +532,12 @@
                 draggedElement.classList.remove('dragging-source');
                 deleteZone.classList.remove('visible');
                 isDragging = false;
+                isMouseDown = false;
                 draggedElement = null;
                 dragClone = null;
                 lastDropTarget = null;
             };
-            
+
             // --- Core Actions ---
             const moveLinkToFolder = (linkId, folderId) => {
                 const linkIndex = items.findIndex(item => item.id === linkId);
@@ -551,10 +573,13 @@
                 loadItems();
                 render();
 
-                // Global touch listeners for drag operation
-                document.addEventListener('touchmove', handleTouchMove, { passive: false });
-                document.addEventListener('touchend', handleTouchEnd);
-                document.addEventListener('touchcancel', handleTouchEnd);
+                // Global listeners for drag operations
+                document.addEventListener('touchmove', handleDragMove, { passive: false });
+                document.addEventListener('touchend', handleDragEnd);
+                document.addEventListener('touchcancel', handleDragEnd);
+                
+                document.addEventListener('mousemove', (e) => { if(isMouseDown) handleDragMove(e); });
+                document.addEventListener('mouseup', handleDragEnd);
                 
                 const cancelButtons = document.querySelectorAll('.modal-cancel');
                 cancelButtons.forEach(btn => btn.addEventListener('click', () => {
