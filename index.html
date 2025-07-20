@@ -330,9 +330,6 @@
     </div>
 
     <script>
-        document.querySelectorAll('.app-item, .folder-item a').forEach(el => {
-            el.addEventListener('contextmenu', e => e.preventDefault());
-        });
 
         document.addEventListener('DOMContentLoaded', () => {
             // --- State and Constants ---
@@ -645,6 +642,10 @@
             };
 
             initialize();
+        });
+        
+        document.querySelectorAll('.app-item, .folder-item a').forEach(el => {
+            el.addEventListener('contextmenu', e => e.preventDefault());
         });
     </script>
 </body>
