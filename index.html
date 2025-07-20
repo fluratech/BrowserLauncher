@@ -323,320 +323,327 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // --- State and Constants ---
-            const STORAGE_KEY = 'mobileLauncherItems';
-            let items = [];
-            let longPressTimer;
-            
-            // Drag state
-            let isDragging = false;
-            let draggedElement = null;
-            let dragClone = null;
-            let lastDropTarget = null;
-            let justDragged = false;
-            let isMouseDown = false;
+        // --- State and Constants ---
+        const STORAGE_KEY = 'mobileLauncherItems';
+        let items = [];
+        let longPressTimer;
+        
+        // Drag state
+        let isDragging = false;
+        let draggedElement = null;
+        let dragClone = null;
+        let lastDropTarget = null;
+        let justDragged = false;
+        let isMouseDown = false;
 
-            // --- DOM Element References ---
-            const appGrid = document.getElementById('app-grid');
-            const addLinkModal = document.getElementById('add-link-modal');
-            const addFolderModal = document.getElementById('add-folder-modal');
-            const folderViewModal = document.getElementById('folder-view-modal');
-            const folderViewName = document.getElementById('folder-view-name');
-            const folderAppGrid = document.getElementById('folder-app-grid');
-            const folderViewClose = document.getElementById('folder-view-close');
-            const deleteZone = document.getElementById('delete-zone');
+        // --- DOM Element References ---
+        const appGrid = document.getElementById('app-grid');
+        const addLinkModal = document.getElementById('add-link-modal');
+        const addFolderModal = document.getElementById('add-folder-modal');
+        const folderViewModal = document.getElementById('folder-view-modal');
+        const folderViewName = document.getElementById('folder-view-name');
+        const folderAppGrid = document.getElementById('folder-app-grid');
+        const folderViewClose = document.getElementById('folder-view-close');
+        const deleteZone = document.getElementById('delete-zone');
 
-            // --- Data Functions (localStorage) ---
-            const loadItems = () => {
-                const storedItems = localStorage.getItem(STORAGE_KEY);
-                items = storedItems ? JSON.parse(storedItems) : [];
-            };
+        // --- Data Functions (localStorage) ---
+        const loadItems = () => {
+            const storedItems = localStorage.getItem(STORAGE_KEY);
+            items = storedItems ? JSON.parse(storedItems) : [];
+        };
 
-            const saveItems = () => {
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-            };
+        const saveItems = () => {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+        };
 
-            // --- Rendering Functions ---
-            const render = () => {
-                appGrid.innerHTML = '';
-                items.forEach(item => {
-                    const element = createItemElement(item);
-                    appGrid.appendChild(element);
+        // --- Rendering Functions ---
+        const render = () => {
+            appGrid.innerHTML = '';
+            items.forEach(item => {
+                const element = createItemElement(item);
+                appGrid.appendChild(element);
+            });
+        };
+
+        const createItemElement = (item) => {
+            const element = item.type === 'folder' ? createFolderElement(item) : createAppElement(item);
+            addDragListenersToElement(element, item);
+            return element;
+        };
+
+        const createAppElement = (item) => {
+            const a = document.createElement('a');
+            a.href = item.url;
+            a.className = 'app-item';
+            a.dataset.id = item.id;
+            a.dataset.type = 'link';
+            const iconDiv = document.createElement('div');
+            iconDiv.className = 'app-icon';
+            const img = document.createElement('img');
+            img.src = `https://www.google.com/s2/favicons?domain=${item.url}&sz=128`;
+            img.alt = item.name;
+            img.draggable = false;
+            img.onerror = (e) => { e.target.src = `https://placehold.co/64/2a2a2a/e0e0e0?text=${item.name.charAt(0)}`; };
+            iconDiv.appendChild(img);
+            const nameSpan = document.createElement('span');
+            nameSpan.className = 'app-name';
+            nameSpan.textContent = item.name;
+            a.append(iconDiv, nameSpan);
+            return a;
+        };
+
+        const createFolderElement = (item) => {
+            const div = document.createElement('div');
+            div.className = 'folder-item';
+            div.dataset.id = item.id;
+            div.dataset.type = 'folder';
+            const iconDiv = document.createElement('div');
+            iconDiv.className = 'folder-icon';
+            if (item.items && item.items.length > 0) {
+                item.items.slice(0, 4).forEach(subItem => {
+                    const miniIcon = document.createElement('img');
+                    miniIcon.className = 'mini-icon';
+                    miniIcon.src = `https://www.google.com/s2/favicons?domain=${subItem.url}&sz=32`;
+                    miniIcon.draggable = false;
+                    miniIcon.onerror = (e) => { e.target.src = `https://placehold.co/32/2a2a2a/e0e0e0?text=${subItem.name.charAt(0)}`; };
+                    iconDiv.appendChild(miniIcon);
                 });
-            };
+            }
+            const nameSpan = document.createElement('span');
+            nameSpan.className = 'app-name';
+            nameSpan.textContent = item.name;
+            div.append(iconDiv, nameSpan);
+            return div;
+        };
 
-            const createItemElement = (item) => {
-                const element = item.type === 'folder' ? createFolderElement(item) : createAppElement(item);
-                addDragListenersToElement(element, item);
-                return element;
-            };
+        const createFolderAppElement = (subItem) => {
+            const a = document.createElement('a');
+            a.href = subItem.url;
+            a.className = 'app-item';
+            a.target = "_blank";
+            const iconDiv = document.createElement('div');
+            iconDiv.className = 'app-icon';
+            const img = document.createElement('img');
+            img.src = `https://www.google.com/s2/favicons?domain=${subItem.url}&sz=128`;
+            img.alt = subItem.name;
+            img.draggable = false;
+            img.onerror = (e) => { e.target.src = `https://placehold.co/64/2a2a2a/e0e0e0?text=${subItem.name.charAt(0)}`; };
+            iconDiv.appendChild(img);
+            const nameSpan = document.createElement('span');
+            nameSpan.className = 'app-name';
+            nameSpan.textContent = subItem.name;
+            a.append(iconDiv, nameSpan);
+            return a;
+        };
 
-            const createAppElement = (item) => {
-                const a = document.createElement('a');
-                a.href = item.url;
-                a.className = 'app-item';
-                a.dataset.id = item.id;
-                a.dataset.type = 'link';
-                const iconDiv = document.createElement('div');
-                iconDiv.className = 'app-icon';
-                const img = document.createElement('img');
-                img.src = `https://www.google.com/s2/favicons?domain=${item.url}&sz=128`;
-                img.alt = item.name;
-                img.draggable = false;
-                img.onerror = (e) => { e.target.src = `https://placehold.co/64/2a2a2a/e0e0e0?text=${item.name.charAt(0)}`; };
-                iconDiv.appendChild(img);
-                const nameSpan = document.createElement('span');
-                nameSpan.className = 'app-name';
-                nameSpan.textContent = item.name;
-                a.append(iconDiv, nameSpan);
-                return a;
-            };
+        // --- Universal Drag and Drop Logic ---
+        const addDragListenersToElement = (element, item) => {
+            // Prevent context menu (long-press menu on mobile)
+            element.addEventListener('contextmenu', e => e.preventDefault());
 
-            const createFolderElement = (item) => {
-                const div = document.createElement('div');
-                div.className = 'folder-item';
-                div.dataset.id = item.id;
-                div.dataset.type = 'folder';
-                const iconDiv = document.createElement('div');
-                iconDiv.className = 'folder-icon';
-                if (item.items && item.items.length > 0) {
-                    item.items.slice(0, 4).forEach(subItem => {
-                        const miniIcon = document.createElement('img');
-                        miniIcon.className = 'mini-icon';
-                        miniIcon.src = `https://www.google.com/s2/favicons?domain=${subItem.url}&sz=32`;
-                        miniIcon.draggable = false;
-                        miniIcon.onerror = (e) => { e.target.src = `https://placehold.co/32/2a2a2a/e0e0e0?text=${subItem.name.charAt(0)}`; };
-                        iconDiv.appendChild(miniIcon);
-                    });
-                }
-                const nameSpan = document.createElement('span');
-                nameSpan.className = 'app-name';
-                nameSpan.textContent = item.name;
-                div.append(iconDiv, nameSpan);
-                return div;
-            };
-
-            const createFolderAppElement = (subItem) => {
-                const a = document.createElement('a');
-                a.href = subItem.url;
-                a.className = 'app-item';
-                a.target = "_blank";
-                const iconDiv = document.createElement('div');
-                iconDiv.className = 'app-icon';
-                const img = document.createElement('img');
-                img.src = `https://www.google.com/s2/favicons?domain=${subItem.url}&sz=128`;
-                img.alt = subItem.name;
-                img.draggable = false;
-                img.onerror = (e) => { e.target.src = `https://placehold.co/64/2a2a2a/e0e0e0?text=${subItem.name.charAt(0)}`; };
-                iconDiv.appendChild(img);
-                const nameSpan = document.createElement('span');
-                nameSpan.className = 'app-name';
-                nameSpan.textContent = subItem.name;
-                a.append(iconDiv, nameSpan);
-                return a;
-            };
-
-            // --- Universal Drag and Drop Logic ---
-            const addDragListenersToElement = (element, item) => {
-                // ✅ **FIX 1: Prevent context menu (long-press menu on mobile)**
-                element.addEventListener('contextmenu', e => e.preventDefault());
-
-                // Touch Events
-                element.addEventListener('touchstart', (e) => handleDragStart(e, element), { passive: false });
-                
-                // Mouse Events
-                element.addEventListener('mousedown', (e) => handleDragStart(e, element));
-
-                // Prevent click firing after a drag
-                element.addEventListener('click', (e) => {
-                    if (justDragged) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                    } else if(item.type === 'folder') {
-                        openFolderView(item);
-                    }
-                }, true);
-            };
-
-            const handleDragStart = (e, element) => {
-                if (e.type === 'mousedown' && e.button !== 0) return; // Only left-click
-                
-                clearTimeout(longPressTimer);
-                justDragged = false;
-                
-                longPressTimer = setTimeout(() => {
-                    isDragging = true;
-                    if (e.type === 'mousedown') isMouseDown = true;
-                    draggedElement = element;
-                    
-                    // Create and position the clone
-                    dragClone = element.cloneNode(true);
-                    dragClone.id = 'drag-clone';
-                    const rect = element.getBoundingClientRect();
-                    dragClone.style.left = `${rect.left}px`;
-                    dragClone.style.top = `${rect.top}px`;
-                    dragClone.style.width = `${rect.width}px`;
-                    document.body.appendChild(dragClone);
-
-                    element.classList.add('dragging-source');
-                    deleteZone.classList.add('visible');
-                }, 500); // 500ms for long press
-            };
-
-            const handleDragMove = (e) => {
-                // ✅ **FIX 2: Do NOT clear the long press timer on move.** // This makes drag initiation more reliable.
-                if (!isDragging) return;
-                
-                // For touch, prevent scrolling page
-                if (e.type === 'touchmove') e.preventDefault();
-
-                const pointer = e.type === 'touchmove' ? e.touches[0] : e;
-                dragClone.style.left = `${pointer.clientX - dragClone.offsetWidth / 2}px`;
-                dragClone.style.top = `${pointer.clientY - dragClone.offsetHeight / 2}px`;
-
-                // Collision detection
-                dragClone.style.display = 'none'; // Hide clone to find element underneath
-                const elementUnder = document.elementFromPoint(pointer.clientX, pointer.clientY);
-                dragClone.style.display = ''; // Show it again
-
-                // Reset previous drop target
-                if (lastDropTarget) {
-                    lastDropTarget.classList.remove('drag-over', 'active');
-                }
-
-                if (elementUnder) {
-                    const folderTarget = elementUnder.closest('.folder-item');
-                    const deleteTarget = elementUnder.closest('#delete-zone');
-
-                    if (folderTarget && folderTarget !== draggedElement) {
-                        folderTarget.classList.add('drag-over');
-                        lastDropTarget = folderTarget;
-                    } else if (deleteTarget) {
-                        deleteTarget.classList.add('active');
-                        lastDropTarget = deleteTarget;
-                    } else {
-                        lastDropTarget = null;
-                    }
-                }
-            };
+            // Touch Events
+            element.addEventListener('touchstart', (e) => handleDragStart(e, element), { passive: false });
             
-            const handleDragEnd = () => {
-                clearTimeout(longPressTimer);
-                if (!isDragging) return;
-                
-                justDragged = true;
-                setTimeout(() => justDragged = false, 100); // Reset after a short delay
+            // Mouse Events
+            element.addEventListener('mousedown', (e) => handleDragStart(e, element));
 
-                if (lastDropTarget) {
-                    const draggedId = draggedElement.dataset.id;
-                    const targetId = lastDropTarget.dataset.id;
-
-                    if (lastDropTarget.id === 'delete-zone') {
-                        deleteItem(draggedId);
-                    } else if (lastDropTarget.classList.contains('folder-item')) {
-                        const draggedItem = items.find(i => i.id === draggedId);
-                        if(draggedItem && draggedItem.type === 'link') {
-                           moveLinkToFolder(draggedId, targetId);
-                        }
-                    }
-                    lastDropTarget.classList.remove('drag-over', 'active');
+            // Prevent click firing after a drag
+            element.addEventListener('click', (e) => {
+                if (justDragged) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                } else if(item.type === 'folder') {
+                    openFolderView(item);
                 }
+            }, true);
+        };
 
-                // Cleanup
-                document.body.removeChild(dragClone);
-                draggedElement.classList.remove('dragging-source');
-                deleteZone.classList.remove('visible');
-                isDragging = false;
-                isMouseDown = false;
-                draggedElement = null;
-                dragClone = null;
-                lastDropTarget = null;
-            };
-
-            // --- Core Actions ---
-            const moveLinkToFolder = (linkId, folderId) => {
-                const linkIndex = items.findIndex(item => item.id === linkId);
-                const folderIndex = items.findIndex(item => item.id === folderId);
-                if (linkIndex === -1 || folderIndex === -1) return;
-                
-                const linkToMove = items[linkIndex];
-                items[folderIndex].items.push({ name: linkToMove.name, url: linkToMove.url });
-                items.splice(linkIndex, 1);
-                saveItems();
-                render();
-            };
+        const handleDragStart = (e, element) => {
+            if (e.type === 'mousedown' && e.button !== 0) return; // Only left-click
             
-            const deleteItem = (itemId) => {
-                items = items.filter(item => item.id !== itemId);
-                saveItems();
-                render();
-            };
+            clearTimeout(longPressTimer);
+            justDragged = false;
+            
+            longPressTimer = setTimeout(() => {
+                isDragging = true;
+                if (e.type === 'mousedown') isMouseDown = true;
+                draggedElement = element;
+                
+                // Create and position the clone
+                dragClone = element.cloneNode(true);
+                dragClone.id = 'drag-clone';
+                const rect = element.getBoundingClientRect();
+                dragClone.style.left = `${rect.left}px`;
+                dragClone.style.top = `${rect.top}px`;
+                dragClone.style.width = `${rect.width}px`;
+                document.body.appendChild(dragClone);
 
-            const openFolderView = (folderItem) => {
-                folderViewName.textContent = folderItem.name;
-                folderAppGrid.innerHTML = '';
-                if (folderItem.items && folderItem.items.length > 0) {
-                    folderItem.items.forEach(subItem => folderAppGrid.appendChild(createFolderAppElement(subItem)));
+                element.classList.add('dragging-source');
+                deleteZone.classList.add('visible');
+            }, 500); // 500ms for long press
+        };
+
+        const handleDragMove = (e) => {
+            if (!isDragging) return;
+            
+            // For touch, prevent scrolling page
+            if (e.type === 'touchmove') e.preventDefault();
+
+            const pointer = e.type === 'touchmove' ? e.touches[0] : e;
+            dragClone.style.left = `${pointer.clientX - dragClone.offsetWidth / 2}px`;
+            dragClone.style.top = `${pointer.clientY - dragClone.offsetHeight / 2}px`;
+
+            // Collision detection
+            dragClone.style.display = 'none'; // Hide clone to find element underneath
+            const elementUnder = document.elementFromPoint(pointer.clientX, pointer.clientY);
+            dragClone.style.display = ''; // Show it again
+
+            // Reset previous drop target
+            if (lastDropTarget) {
+                lastDropTarget.classList.remove('drag-over', 'active');
+            }
+
+            if (elementUnder) {
+                const folderTarget = elementUnder.closest('.folder-item');
+                const deleteTarget = elementUnder.closest('#delete-zone');
+
+                if (folderTarget && folderTarget !== draggedElement) {
+                    folderTarget.classList.add('drag-over');
+                    lastDropTarget = folderTarget;
+                } else if (deleteTarget) {
+                    deleteTarget.classList.add('active');
+                    lastDropTarget = deleteTarget;
                 } else {
-                    folderAppGrid.innerHTML = `<p style="color: var(--secondary-text-color); text-align: center;">This folder is empty.</p>`;
+                    lastDropTarget = null;
                 }
-                folderViewModal.style.display = 'flex';
-            };
+            }
+        };
+        
+        const handleDragEnd = () => {
+            clearTimeout(longPressTimer);
+            if (!isDragging) return;
+            
+            justDragged = true;
+            setTimeout(() => justDragged = false, 100); // Reset after a short delay
 
-            // --- Initial Setup ---
-            const initialize = () => {
-                loadItems();
+            if (lastDropTarget) {
+                const draggedId = draggedElement.dataset.id;
+                const targetId = lastDropTarget.dataset.id;
+
+                if (lastDropTarget.id === 'delete-zone') {
+                    deleteItem(draggedId);
+                } else if (lastDropTarget.classList.contains('folder-item')) {
+                    const draggedItem = items.find(i => i.id === draggedId);
+                    if(draggedItem && draggedItem.type === 'link') {
+                        moveLinkToFolder(draggedId, targetId);
+                    }
+                }
+                lastDropTarget.classList.remove('drag-over', 'active');
+            }
+
+            // Cleanup
+            document.body.removeChild(dragClone);
+            draggedElement.classList.remove('dragging-source');
+            deleteZone.classList.remove('visible');
+            isDragging = false;
+            isMouseDown = false;
+            draggedElement = null;
+            dragClone = null;
+            lastDropTarget = null;
+        };
+
+        // --- Core Actions ---
+        const moveLinkToFolder = (linkId, folderId) => {
+            const linkIndex = items.findIndex(item => item.id === linkId);
+            const folderIndex = items.findIndex(item => item.id === folderId);
+            if (linkIndex === -1 || folderIndex === -1) return;
+            
+            const linkToMove = items[linkIndex];
+            items[folderIndex].items.push({ name: linkToMove.name, url: linkToMove.url });
+            items.splice(linkIndex, 1);
+            saveItems();
+            render();
+        };
+        
+        const deleteItem = (itemId) => {
+            items = items.filter(item => item.id !== itemId);
+            saveItems();
+            render();
+        };
+
+        const openFolderView = (folderItem) => {
+            folderViewName.textContent = folderItem.name;
+            folderAppGrid.innerHTML = '';
+            if (folderItem.items && folderItem.items.length > 0) {
+                folderItem.items.forEach(subItem => {
+                    const appElement = createFolderAppElement(subItem);
+                    
+                    // ✅ **THE FIX FOR FOLDER CONTENTS**
+                    // This prevents the long-press menu on icons inside a folder.
+                    appElement.addEventListener('contextmenu', e => e.preventDefault());
+                    
+                    folderAppGrid.appendChild(appElement);
+                });
+            } else {
+                folderAppGrid.innerHTML = `<p style="color: var(--secondary-text-color); text-align: center;">This folder is empty.</p>`;
+            }
+            folderViewModal.style.display = 'flex';
+        };
+
+        // --- Initial Setup ---
+        const initialize = () => {
+            loadItems();
+            render();
+
+            // Global listeners for drag operations
+            document.addEventListener('touchmove', handleDragMove, { passive: false });
+            document.addEventListener('touchend', handleDragEnd);
+            document.addEventListener('touchcancel', handleDragEnd);
+            
+            document.addEventListener('mousemove', (e) => { if(isMouseDown) handleDragMove(e); });
+            document.addEventListener('mouseup', handleDragEnd);
+            
+            const cancelButtons = document.querySelectorAll('.modal-cancel');
+            cancelButtons.forEach(btn => btn.addEventListener('click', () => {
+                addLinkModal.style.display = 'none';
+                addFolderModal.style.display = 'none';
+            }));
+
+            document.getElementById('add-link-btn').addEventListener('click', () => {
+                addLinkModal.style.display = 'flex';
+                document.getElementById('link-name').focus();
+            });
+
+            document.getElementById('add-folder-btn').addEventListener('click', () => {
+                addFolderModal.style.display = 'flex';
+                document.getElementById('folder-name').focus();
+            });
+
+            folderViewClose.addEventListener('click', () => {
+                folderViewModal.style.display = 'none';
+            });
+
+            document.getElementById('add-link-form').addEventListener('submit', (e) => {
+                e.preventDefault();
+                items.push({ id: crypto.randomUUID(), type: 'link', name: e.target.elements['link-name'].value, url: e.target.elements['link-url'].value });
+                saveItems();
                 render();
+                e.target.reset();
+                addLinkModal.style.display = 'none';
+            });
 
-                // Global listeners for drag operations
-                document.addEventListener('touchmove', handleDragMove, { passive: false });
-                document.addEventListener('touchend', handleDragEnd);
-                document.addEventListener('touchcancel', handleDragEnd);
-                
-                document.addEventListener('mousemove', (e) => { if(isMouseDown) handleDragMove(e); });
-                document.addEventListener('mouseup', handleDragEnd);
-                
-                const cancelButtons = document.querySelectorAll('.modal-cancel');
-                cancelButtons.forEach(btn => btn.addEventListener('click', () => {
-                    addLinkModal.style.display = 'none';
-                    addFolderModal.style.display = 'none';
-                }));
+            document.getElementById('add-folder-form').addEventListener('submit', (e) => {
+                e.preventDefault();
+                items.push({ id: crypto.randomUUID(), type: 'folder', name: e.target.elements['folder-name'].value, items: [] });
+                saveItems();
+                render();
+                e.target.reset();
+                addFolderModal.style.display = 'none';
+            });
+        };
 
-                document.getElementById('add-link-btn').addEventListener('click', () => {
-                    addLinkModal.style.display = 'flex';
-                    document.getElementById('link-name').focus();
-                });
-
-                document.getElementById('add-folder-btn').addEventListener('click', () => {
-                    addFolderModal.style.display = 'flex';
-                    document.getElementById('folder-name').focus();
-                });
-
-                folderViewClose.addEventListener('click', () => {
-                    folderViewModal.style.display = 'none';
-                });
-
-                document.getElementById('add-link-form').addEventListener('submit', (e) => {
-                    e.preventDefault();
-                    items.push({ id: crypto.randomUUID(), type: 'link', name: e.target.elements['link-name'].value, url: e.target.elements['link-url'].value });
-                    saveItems();
-                    render();
-                    e.target.reset();
-                    addLinkModal.style.display = 'none';
-                });
-
-                document.getElementById('add-folder-form').addEventListener('submit', (e) => {
-                    e.preventDefault();
-                    items.push({ id: crypto.randomUUID(), type: 'folder', name: e.target.elements['folder-name'].value, items: [] });
-                    saveItems();
-                    render();
-                    e.target.reset();
-                    addFolderModal.style.display = 'none';
-                });
-            };
-
-            initialize();
-        });
+        initialize();
+    });
     </script>
 </body>
 </html>
