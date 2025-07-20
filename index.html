@@ -86,7 +86,8 @@
             transition: transform 0.2s ease, opacity 0.2s ease;
             width: 80px; /* Specific width for each grid item */
             height: 110px; /* Specific height for each grid item */
-            -webkit-touch-callout: none; 
+            -webkit-touch-callout: none;
+            pointer-events: none;
         }
         
         .app-item:active, .folder-item:active {
@@ -106,7 +107,6 @@
             background-color: var(--icon-background);
             flex-shrink: 0; /* Prevent icon from shrinking */
             transition: transform 0.2s ease, border 0.2s ease;
-            -webkit-touch-callout: none;
         }
 
         .app-icon img {
