@@ -55,8 +55,8 @@
             display: grid;
             grid-template-columns: repeat(auto-fill, 80px); /* Create as many 80px columns as fit */
             justify-content: center; /* Center the grid container */
-            gap: 20px; /* Spacing between items */
-            padding: 20px;
+            gap: 10px; /* Spacing between items */
+            padding: 10px;
         }
 
         /* Individual App/Folder Item Styling */
@@ -97,6 +97,7 @@
             width: 100%;
             height: 100%;
             object-fit: cover;
+            pointer-events: none;
         }
 
         /* Folder Specific Styling */
@@ -148,11 +149,15 @@
 
         /* Controls and Modals */
         #controls {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
             display: flex;
             justify-content: center;
-            gap: 15px;
-            padding: 15px 0;
-            margin-top: auto; /* Push controls to the bottom */
+            gap: 10px;
+            padding: 20px 0;
+            background: linear-gradient(to top, var(--background-color) 60%, transparent);
         }
 
         .control-button {
