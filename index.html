@@ -438,16 +438,9 @@
 
         // --- Universal Drag and Drop Logic ---
         const addDragListenersToElement = (element, item) => {
-            // Prevent context menu (long-press menu on mobile)
             element.addEventListener('contextmenu', e => e.preventDefault());
-
-            // Touch Events
             element.addEventListener('touchstart', (e) => handleDragStart(e, element), { passive: false });
-            
-            // Mouse Events
             element.addEventListener('mousedown', (e) => handleDragStart(e, element));
-
-            // Prevent click firing after a drag
             element.addEventListener('click', (e) => {
                 if (justDragged) {
                     e.preventDefault();
@@ -459,7 +452,7 @@
         };
 
         const handleDragStart = (e, element) => {
-            if (e.type === 'mousedown' && e.button !== 0) return; // Only left-click
+            if (e.type === 'mousedown' && e.button !== 0) return;
             
             clearTimeout(longPressTimer);
             justDragged = false;
@@ -469,7 +462,6 @@
                 if (e.type === 'mousedown') isMouseDown = true;
                 draggedElement = element;
                 
-                // Create and position the clone
                 dragClone = element.cloneNode(true);
                 dragClone.id = 'drag-clone';
                 const rect = element.getBoundingClientRect();
@@ -480,33 +472,24 @@
 
                 element.classList.add('dragging-source');
                 deleteZone.classList.add('visible');
-            }, 500); // 500ms for long press
+            }, 500);
         };
 
         const handleDragMove = (e) => {
             if (!isDragging) return;
-            
-            // For touch, prevent scrolling page
             if (e.type === 'touchmove') e.preventDefault();
-
             const pointer = e.type === 'touchmove' ? e.touches[0] : e;
             dragClone.style.left = `${pointer.clientX - dragClone.offsetWidth / 2}px`;
             dragClone.style.top = `${pointer.clientY - dragClone.offsetHeight / 2}px`;
-
-            // Collision detection
-            dragClone.style.display = 'none'; // Hide clone to find element underneath
+            dragClone.style.display = 'none';
             const elementUnder = document.elementFromPoint(pointer.clientX, pointer.clientY);
-            dragClone.style.display = ''; // Show it again
-
-            // Reset previous drop target
+            dragClone.style.display = '';
             if (lastDropTarget) {
                 lastDropTarget.classList.remove('drag-over', 'active');
             }
-
             if (elementUnder) {
                 const folderTarget = elementUnder.closest('.folder-item');
                 const deleteTarget = elementUnder.closest('#delete-zone');
-
                 if (folderTarget && folderTarget !== draggedElement) {
                     folderTarget.classList.add('drag-over');
                     lastDropTarget = folderTarget;
@@ -522,14 +505,11 @@
         const handleDragEnd = () => {
             clearTimeout(longPressTimer);
             if (!isDragging) return;
-            
             justDragged = true;
-            setTimeout(() => justDragged = false, 100); // Reset after a short delay
-
+            setTimeout(() => justDragged = false, 100);
             if (lastDropTarget) {
                 const draggedId = draggedElement.dataset.id;
                 const targetId = lastDropTarget.dataset.id;
-
                 if (lastDropTarget.id === 'delete-zone') {
                     deleteItem(draggedId);
                 } else if (lastDropTarget.classList.contains('folder-item')) {
@@ -540,8 +520,6 @@
                 }
                 lastDropTarget.classList.remove('drag-over', 'active');
             }
-
-            // Cleanup
             document.body.removeChild(dragClone);
             draggedElement.classList.remove('dragging-source');
             deleteZone.classList.remove('visible');
@@ -557,7 +535,6 @@
             const linkIndex = items.findIndex(item => item.id === linkId);
             const folderIndex = items.findIndex(item => item.id === folderId);
             if (linkIndex === -1 || folderIndex === -1) return;
-            
             const linkToMove = items[linkIndex];
             items[folderIndex].items.push({ name: linkToMove.name, url: linkToMove.url });
             items.splice(linkIndex, 1);
@@ -571,14 +548,61 @@
             render();
         };
 
+        /**
+         * ✅ **NEW FUNCTION: Deletes an item from within a folder's item array.**
+         */
+        const deleteItemFromFolder = (folderId, itemUrl) => {
+            const folder = items.find(item => item.id === folderId);
+            if (!folder || !folder.items) return;
+
+            // Keep all items except the one we want to delete
+            folder.items = folder.items.filter(subItem => subItem.url !== itemUrl);
+
+            saveItems();
+            render(); // Redraw the main grid to update folder preview icons
+            openFolderView(folder); // Refresh the open folder to show the item is gone
+        };
+
+        /**
+         * ✅ **UPDATED FUNCTION: Adds long-press-to-delete for items inside folders.**
+         */
         const openFolderView = (folderItem) => {
             folderViewName.textContent = folderItem.name;
             folderAppGrid.innerHTML = '';
             if (folderItem.items && folderItem.items.length > 0) {
                 folderItem.items.forEach(subItem => {
                     const appElement = createFolderAppElement(subItem);
-                    // This prevents the long-press menu on icons inside a folder.
+                    
+                    let pressTimer = null;
+
+                    // Stop browser's own long-press menu
                     appElement.addEventListener('contextmenu', e => e.preventDefault());
+
+                    // START: Logic for long-press-to-delete
+                    const onPress = () => {
+                        pressTimer = setTimeout(() => {
+                            // Prevent navigation when the press is released
+                            appElement.addEventListener('click', e => e.preventDefault(), { once: true });
+                            
+                            if (confirm(`Remove "${subItem.name}" from this folder?`)) {
+                                deleteItemFromFolder(folderItem.id, subItem.url);
+                            }
+                        }, 500); // 500ms for long press
+                    };
+
+                    const onRelease = () => {
+                        clearTimeout(pressTimer);
+                    };
+                    
+                    appElement.addEventListener('mousedown', onPress);
+                    appElement.addEventListener('touchstart', onPress, { passive: true });
+
+                    appElement.addEventListener('mouseup', onRelease);
+                    appElement.addEventListener('mouseleave', onRelease);
+                    appElement.addEventListener('touchend', onRelease);
+                    appElement.addEventListener('touchmove', onRelease); // Cancel if finger moves (scroll)
+                    // END: Logic for long-press-to-delete
+
                     folderAppGrid.appendChild(appElement);
                 });
             } else {
@@ -591,35 +615,27 @@
         const initialize = () => {
             loadItems();
             render();
-
-            // Global listeners for drag operations
             document.addEventListener('touchmove', handleDragMove, { passive: false });
             document.addEventListener('touchend', handleDragEnd);
             document.addEventListener('touchcancel', handleDragEnd);
-            
             document.addEventListener('mousemove', (e) => { if(isMouseDown) handleDragMove(e); });
             document.addEventListener('mouseup', handleDragEnd);
-            
             const cancelButtons = document.querySelectorAll('.modal-cancel');
             cancelButtons.forEach(btn => btn.addEventListener('click', () => {
                 addLinkModal.style.display = 'none';
                 addFolderModal.style.display = 'none';
             }));
-
             document.getElementById('add-link-btn').addEventListener('click', () => {
                 addLinkModal.style.display = 'flex';
                 document.getElementById('link-name').focus();
             });
-
             document.getElementById('add-folder-btn').addEventListener('click', () => {
                 addFolderModal.style.display = 'flex';
                 document.getElementById('folder-name').focus();
             });
-
             folderViewClose.addEventListener('click', () => {
                 folderViewModal.style.display = 'none';
             });
-
             document.getElementById('add-link-form').addEventListener('submit', (e) => {
                 e.preventDefault();
                 items.push({ id: crypto.randomUUID(), type: 'link', name: e.target.elements['link-name'].value, url: e.target.elements['link-url'].value });
@@ -628,7 +644,6 @@
                 e.target.reset();
                 addLinkModal.style.display = 'none';
             });
-
             document.getElementById('add-folder-form').addEventListener('submit', (e) => {
                 e.preventDefault();
                 items.push({ id: crypto.randomUUID(), type: 'folder', name: e.target.elements['folder-name'].value, items: [] });
