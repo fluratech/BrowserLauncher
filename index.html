@@ -322,7 +322,7 @@
     </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', () => {
         // --- State and Constants ---
         const STORAGE_KEY = 'mobileLauncherItems';
         let items = [];
@@ -577,11 +577,8 @@
             if (folderItem.items && folderItem.items.length > 0) {
                 folderItem.items.forEach(subItem => {
                     const appElement = createFolderAppElement(subItem);
-                    
-                    // ✅ **THE FIX FOR FOLDER CONTENTS**
                     // This prevents the long-press menu on icons inside a folder.
                     appElement.addEventListener('contextmenu', e => e.preventDefault());
-                    
                     folderAppGrid.appendChild(appElement);
                 });
             } else {
@@ -644,6 +641,6 @@
 
         initialize();
     });
-    </script>
+</script>
 </body>
 </html>
