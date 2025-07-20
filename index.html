@@ -570,6 +570,9 @@
                 items.splice(linkIndex, 1);
                 saveItems();
                 render();
+                document.querySelectorAll('.app-item, .folder-item a').forEach(el => {
+                    el.addEventListener('contextmenu', e => e.preventDefault());
+                });
             };
             
             const deleteItem = (itemId) => {
@@ -643,7 +646,7 @@
 
             initialize();
         });
-        
+
         document.querySelectorAll('.app-item, .folder-item a').forEach(el => {
             el.addEventListener('contextmenu', e => e.preventDefault());
         });
