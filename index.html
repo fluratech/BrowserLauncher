@@ -88,13 +88,6 @@
             height: 110px; /* Specific height for each grid item */
         }
 
-        .app-icon a, .folder-icon a {
-            -webkit-user-select: none;
-            -webkit-touch-callout: none;
-            user-select: none;
-            pointer-events: none;
-        }
-
         
         .app-item:active, .folder-item:active {
             transform: scale(0.95);
@@ -114,6 +107,7 @@
             flex-shrink: 0; /* Prevent icon from shrinking */
             transition: transform 0.2s ease, border 0.2s ease;
             -webkit-touch-callout: none;
+            pointer-events: none;
         }
 
         .app-icon img {
